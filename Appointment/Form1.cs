@@ -100,7 +100,7 @@ namespace Appointment
                 //    row["Save dsta"] = "";
                 //}
             }
-            
+
             //string newColumnName = "Enc Value";
             //if (excelData.Columns.Contains(newColumnName))
             //    newColumnName += "_" + Guid.NewGuid().ToString("N").Substring(0, 4);
@@ -115,6 +115,7 @@ namespace Appointment
             //dataGridView1.DataSource = null; // Reset to apply
             //dataGridView1.DataSource = excelData;
         }
+
         private async Task<string> CallSaveBookingApiAsync(DataRow row)
         {
             try
@@ -122,68 +123,95 @@ namespace Appointment
                 string url = row["Url"]?.ToString();
                 var parsed = ParseUrlParameters(url);
 
-                // Extract time and format to HH:mm
                 string rawTime = parsed["time"]; // e.g. 11m00
-                string formattedTime = rawTime.Replace("m", ":"); // 11:00
+                string formattedTime = rawTime.Replace("m", ":");
 
-                // Construct full date
-                string bookDate = $"{parsed["year"]}-{parsed["month"].PadLeft(2, '0')}-{parsed["day"].PadLeft(2, '0')}"; // e.g. 2025-08-21
+                string bookDate = $"{parsed["year"]}-{parsed["month"].PadLeft(2, '0')}-{parsed["day"].PadLeft(2, '0')}";
 
-                var payload = new
+                var formFields = new Dictionary<string, string>
+        {
+            { "bookdate",   bookDate },
+            { "booktime",   formattedTime },
+            { "adults",     parsed["adults"] },
+            { "children",   parsed["children"] },
+            { "customers",  "1" },
+            { "couponcode", "" },
+            { "cid",        "12" },
+            { "bid",        parsed["bid"] },
+            { "pid",        "0" },
+            { "paymod",     "" },
+            { "ofirstname", row["First-name"]?.ToString() ?? "" },
+            { "olastname",  row["Last-name"]?.ToString() ?? "" },
+            { "oemail",     "test@example.com" },
+            { "ocountry",   "PK" },
+            { "ocity",      row["City"]?.ToString() ?? "" },
+            { "oaddress",   "" },
+            { "opostalcode","" },
+            { "ophone",     row["Mobile*"]?.ToString() ?? "" },
+            { "omobile",    "" },
+            { "ccustom1",   row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString() ?? "" },
+            { "ccustom2",   row["Employer's-Name-in-Greece*"]?.ToString() ?? "" },
+            { "ccustom3",   row["Father's-name*"]?.ToString() ?? "" },
+            { "ccustom4",   row["Passport-Number*"]?.ToString() ?? "" },
+            { "ccustom5",   row["Date-of-Expiry-of-Passport*"]?.ToString() ?? "" },
+            { "p1firstname",row["First-name"]?.ToString() ?? "" },
+            { "p1lastname", row["Last-name"]?.ToString() ?? "" },
+            { "ocomments",  "" },
+            { "invoice",    "0" },
+            { "enc",        row["Enc"]?.ToString() ?? "" }, // MUST be valid
+            { "rnd",        new Random().Next(1, 100).ToString() }
+        };
+
+                // --- Prepare HttpClient with session/cookies ---
+                var handler = new HttpClientHandler
                 {
-                    bookdate = bookDate,
-                    booktime = formattedTime,
-                    adults = int.Parse(parsed["adults"]),
-                    children = int.Parse(parsed["children"]),
-                    customers = 1,
-                    couponcode = "",
-                    cid = 12,
-                    bid = int.Parse(parsed["bid"]),
-                    pid = 0,
-                    paymod = "",
-                    ofirstname = row["First-name"]?.ToString(),
-                    olastname = row["Last-name"]?.ToString(),
-                    oemail = "test@example.com", // or get from Excel
-                    ocountry = "PK",
-                    ocity = row["City"]?.ToString(),
-                    oaddress = "",
-                    opostalcode = "",
-                    ophone = row["Mobile*"]?.ToString(),
-                    omobile = "",
-                    ccustom1 = row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString(),
-                    ccustom2 = row["Employer's-Name-in-Greece*"]?.ToString(),
-                    ccustom3 = row["Father's-name*"]?.ToString(),
-                    ccustom4 = row["Passport-Number*"]?.ToString(),
-                    ccustom5 = row["Date-of-Expiry-of-Passport*"]?.ToString(),
-                    p1firstname = row["First-name"]?.ToString(),
-                    p1lastname = row["Last-name"]?.ToString(),
-                    ocomments = "",
-                    invoice = 0,
-                    enc = row["Enc"]?.ToString(),
-                    rnd = new Random().Next(1, 100)
+                    UseCookies = true,
+                    CookieContainer = new System.Net.CookieContainer()
                 };
 
-                string json = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var client = new HttpClient(handler);
+                client.DefaultRequestHeaders.Add("User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
-                using (var client = new HttpClient())
+                client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
+
+                // --- Step 1: Load page to get PHP session cookies ---
+                string fullBookingUrl = url;
+                var initialResponse = client.GetAsync(fullBookingUrl).Result;
+                if (initialResponse.IsSuccessStatusCode)
                 {
-                    HttpResponseMessage response = null;
-                    int retries = 0;
+                    string html = initialResponse.Content.ReadAsStringAsync().Result;
 
-                    do
+                    // Parse HTML to extract enc value using HtmlAgilityPack
+                    HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                    doc.LoadHtml(html);
+
+                    
+                    var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
+                    if (encNode != null)
                     {
-                        response = await client.PostAsync("https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content);
-                        retries++;
-                        btnSaveForm.Text = $"Save Booking {retries}";
-                        if (!response.IsSuccessStatusCode)
-                            await Task.Delay(3000);
-                    } while (!response.IsSuccessStatusCode && retries < 5);
+                        string encValue = encNode.GetAttributeValue("value", "");
+                        //MessageBox.Show("enc: " + encValue);
+                        //return encValue;
+                    }
+                    //return $"Failed to load booking page: {initialResponse.StatusCode}";
+                }
 
-                    if (response.IsSuccessStatusCode)
-                        return "Success";
-                    else
-                        return $"Failed: {response.StatusCode}";
+                // --- Step 2: Send form data ---
+                var content = new FormUrlEncodedContent(formFields);
+                HttpResponseMessage response = client.PostAsync(
+                    "https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    string responseString = response.Content.ReadAsStringAsync().Result;
+                    return responseString; // You can parse JSON here if needed
+                }
+                else
+                {
+                    string responseString = await response.Content.ReadAsStringAsync();
+                    return $"Failed: {response.StatusCode}\n{responseString}";
                 }
             }
             catch (Exception ex)
@@ -191,6 +219,84 @@ namespace Appointment
                 return $"Error: {ex.Message}";
             }
         }
+
+
+        //private async Task<string> CallSaveBookingApiAsync(DataRow row)
+        //{
+        //    try
+        //    {
+        //        string url = row["Url"]?.ToString();
+        //        var parsed = ParseUrlParameters(url);
+
+        //        // Extract time and format to HH:mm
+        //        string rawTime = parsed["time"]; // e.g. 11m00
+        //        string formattedTime = rawTime.Replace("m", ":"); // 11:00
+
+        //        // Construct full date
+        //        string bookDate = $"{parsed["year"]}-{parsed["month"].PadLeft(2, '0')}-{parsed["day"].PadLeft(2, '0')}"; // e.g. 2025-08-21
+
+        //        var payload = new
+        //        {
+        //            bookdate = bookDate,
+        //            booktime = formattedTime,
+        //            adults = int.Parse(parsed["adults"]),
+        //            children = int.Parse(parsed["children"]),
+        //            customers = 1,
+        //            couponcode = "",
+        //            cid = 12,
+        //            bid = int.Parse(parsed["bid"]),
+        //            pid = 0,
+        //            paymod = "",
+        //            ofirstname = row["First-name"]?.ToString(),
+        //            olastname = row["Last-name"]?.ToString(),
+        //            oemail = "test@example.com", // or get from Excel
+        //            ocountry = "PK",
+        //            ocity = row["City"]?.ToString(),
+        //            oaddress = "",
+        //            opostalcode = "",
+        //            ophone = row["Mobile*"]?.ToString(),
+        //            omobile = "",
+        //            ccustom1 = row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString(),
+        //            ccustom2 = row["Employer's-Name-in-Greece*"]?.ToString(),
+        //            ccustom3 = row["Father's-name*"]?.ToString(),
+        //            ccustom4 = row["Passport-Number*"]?.ToString(),
+        //            ccustom5 = row["Date-of-Expiry-of-Passport*"]?.ToString(),
+        //            p1firstname = row["First-name"]?.ToString(),
+        //            p1lastname = row["Last-name"]?.ToString(),
+        //            ocomments = "",
+        //            invoice = 0,
+        //            enc = row["Enc"]?.ToString(),
+        //            rnd = new Random().Next(1, 100)
+        //        };
+
+        //        string json = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
+        //        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        //        using (var client = new HttpClient())
+        //        {
+        //            HttpResponseMessage response = null;
+        //            int retries = 0;
+
+        //            do
+        //            {
+        //                response = client.PostAsync("https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content).Result;
+        //                retries++;
+        //                btnSaveForm.Text = $"Save Booking {retries}";
+        //                //if (!response.IsSuccessStatusCode)
+        //                    //await Task.Delay(3000);
+        //            } while (!response.IsSuccessStatusCode && retries < 5);
+
+        //            if (response.IsSuccessStatusCode)
+        //                return "Success";
+        //            else
+        //                return $"Failed: {response.StatusCode}";
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return $"Error: {ex.Message}";
+        //    }
+        //}
 
         private void btnDownloadExcel_Click(object sender, EventArgs e)
         {
@@ -290,7 +396,7 @@ namespace Appointment
         private Dictionary<string, string> ParseUrlParameters(string url)
         {
             var uri = new Uri(url);
-            var query = ParseQueryString(uri.Query);
+            var query = ParseQueryString(url);
 
             return new Dictionary<string, string>
             {
@@ -330,7 +436,7 @@ namespace Appointment
 
                 lblCurrentRow.Text = $"Processing Row {i + 1} ..."; // +2 to account for header row
 
-                if (string.IsNullOrWhiteSpace(url) || !string.IsNullOrWhiteSpace(enc) || !string.IsNullOrWhiteSpace(saveData))
+                if (string.IsNullOrWhiteSpace(enc) || !string.IsNullOrWhiteSpace(saveData))
                     continue;
 
                 var row = excelData.Rows[i];
