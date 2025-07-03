@@ -4,3 +4,6 @@
 
 /.vs/Appointment
 /Appointment/.vs
+/Appointment/bin/Debug
+/Appointment/obj/Debug
+/packages
