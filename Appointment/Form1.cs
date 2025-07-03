@@ -120,6 +120,10 @@ namespace Appointment
         {
             try
             {
+                int retryCount = 0;
+                int maxRetries = Convert.ToInt32(txtRateLimit.Text);
+                double timeoutSeconds = Convert.ToDouble(txtInterval.Text);
+
                 string url = row["Url"]?.ToString();
                 var parsed = ParseUrlParameters(url);
 
@@ -136,7 +140,7 @@ namespace Appointment
             { "children",   parsed["children"] },
             { "customers",  "1" },
             { "couponcode", "" },
-            { "cid",        "12" },
+            { "cid",        "18" },
             { "bid",        parsed["bid"] },
             { "pid",        "0" },
             { "paymod",     "" },
@@ -174,50 +178,79 @@ namespace Appointment
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
+
+
                 client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
 
-                // --- Step 1: Load page to get PHP session cookies ---
-                string fullBookingUrl = url;
-                var initialResponse = client.GetAsync(fullBookingUrl).Result;
-                if (initialResponse.IsSuccessStatusCode)
+                //// --- Step 1: Load page to get PHP session cookies ---
+                //string fullBookingUrl = url;
+                //var initialResponse = client.GetAsync(fullBookingUrl).Result;
+                //if (initialResponse.IsSuccessStatusCode)
+                //{
+                //    string html = initialResponse.Content.ReadAsStringAsync().Result;
+
+                //    // Parse HTML to extract enc value using HtmlAgilityPack
+                //    HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                //    doc.LoadHtml(html);
+
+
+                //    var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
+                //    if (encNode != null)
+                //    {
+                //        string encValue = encNode.GetAttributeValue("value", "");
+                //        //MessageBox.Show("enc: " + encValue);
+                //        //return encValue;
+                //    }
+                //    //return $"Failed to load booking page: {initialResponse.StatusCode}";
+                //}
+
+                while (retryCount < maxRetries)
                 {
-                    string html = initialResponse.Content.ReadAsStringAsync().Result;
-
-                    // Parse HTML to extract enc value using HtmlAgilityPack
-                    HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                    doc.LoadHtml(html);
-
-                    
-                    var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
-                    if (encNode != null)
+                    try
                     {
-                        string encValue = encNode.GetAttributeValue("value", "");
-                        //MessageBox.Show("enc: " + encValue);
-                        //return encValue;
+                        btnSaveForm.Text = $"Save Data {retryCount + 1}";
+                        // --- Step 2: Send form data ---
+                        var content = new FormUrlEncodedContent(formFields);
+                        HttpResponseMessage response = client.PostAsync(
+                            "https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content).Result;
+
+                        string result = response.Content.ReadAsStringAsync().Result;
+                        if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+                        {
+                            retryCount++;
+                            //await Task.Delay(1000); // wait before retrying
+                            continue;
+                        }
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            string responseString = response.Content.ReadAsStringAsync().Result;
+                            return "Saved"; // You can parse JSON here if needed
+                        }
+                        //else
+                        //{
+                        //    string responseString = await response.Content.ReadAsStringAsync();
+                        //    return $"Failed: {response.StatusCode}\n{responseString}";
+                        //}
                     }
-                    //return $"Failed to load booking page: {initialResponse.StatusCode}";
-                }
-
-                // --- Step 2: Send form data ---
-                var content = new FormUrlEncodedContent(formFields);
-                HttpResponseMessage response = client.PostAsync(
-                    "https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content).Result;
-
-                if (response.IsSuccessStatusCode)
-                {
-                    string responseString = response.Content.ReadAsStringAsync().Result;
-                    return responseString; // You can parse JSON here if needed
-                }
-                else
-                {
-                    string responseString = await response.Content.ReadAsStringAsync();
-                    return $"Failed: {response.StatusCode}\n{responseString}";
+                    catch (Exception ex)
+                    {
+                        retryCount++;
+                        if (retryCount >= maxRetries)
+                        {
+                            //MessageBox.Show("Failed after "+maxRetries+" attempts. Error: " + ex.Message);
+                            btnSaveForm.Text = "Save Data";
+                            return "";
+                        }
+                        Task.Delay(1000).Wait(); // delay before retry
+                    }
                 }
             }
             catch (Exception ex)
             {
                 return $"Error: {ex.Message}";
             }
+            return null;
         }
 
 
@@ -320,7 +353,7 @@ namespace Appointment
 
                     // Load data from DataTable including headers
                     ws.Cells["A1"].LoadFromDataTable(excelData, true);
-                    ws.Cells[ws.Dimension.Address].AutoFitColumns();
+                    //ws.Cells[ws.Dimension.Address]?.AutoFitColumns();
 
                     // Save to selected file
                     package.SaveAs(new FileInfo(sfd.FileName));
@@ -338,46 +371,80 @@ namespace Appointment
             int maxRetries = Convert.ToInt32(txtRateLimit.Text);
             double timeoutSeconds = Convert.ToDouble(txtInterval.Text);
 
-            var httpClient1 = new HttpClient()
+            var handler = new HttpClientHandler
             {
-                Timeout = TimeSpan.FromSeconds(timeoutSeconds)
+                UseCookies = true,
+                CookieContainer = new System.Net.CookieContainer()
             };
+
+            var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+
+            client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
+
+
 
             while (retryCount < maxRetries)
             {
                 try
                 {
                     btnCheckEnc.Text = $"Check Enc {retryCount + 1}";
-                    var response = httpClient1.GetAsync(url).Result;
+                    var response = client.GetAsync(url).Result;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string html = response.Content.ReadAsStringAsync().Result;
+
+                        // Parse HTML to extract enc value using HtmlAgilityPack
+                        HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                        doc.LoadHtml(html);
+
+
+                        var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
+                        if (encNode != null)
+                        {
+                            string encValue = encNode.GetAttributeValue("value", "");
+                            MessageBox.Show("enc: " + encValue);
+                            return encValue;
+                        }
+                        else
+                        {
+                            MessageBox.Show("enc input field not found.");
+                            return null;
+                        }
+                        //return $"Failed to load booking page: {initialResponse.StatusCode}";
+                    }
+
 
 
                     if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                     {
                         retryCount++;
-                        await Task.Delay(1000); // wait before retrying
+                        //await Task.Delay(1000); // wait before retrying
                         continue;
                     }
 
-                    response.EnsureSuccessStatusCode();
-                    string html = await response.Content.ReadAsStringAsync();
+                    //response.EnsureSuccessStatusCode();
+                    //string html = await response.Content.ReadAsStringAsync();
 
-                    // Parse HTML to extract enc value using HtmlAgilityPack
-                    HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                    doc.LoadHtml(html);
+                    //// Parse HTML to extract enc value using HtmlAgilityPack
+                    //HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                    //doc.LoadHtml(html);
 
-                    var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
+                    //var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
 
-                    if (encNode != null)
-                    {
-                        string encValue = encNode.GetAttributeValue("value", "");
-                        MessageBox.Show("enc: " + encValue);
-                        return encValue;
-                    }
-                    else
-                    {
-                        MessageBox.Show("enc input field not found.");
-                        return "";
-                    }
+                    //if (encNode != null)
+                    //{
+                    //    string encValue = encNode.GetAttributeValue("value", "");
+                    //    MessageBox.Show("enc: " + encValue);
+                    //    return encValue;
+                    //}
+                    //else
+                    //{
+                    //    MessageBox.Show("enc input field not found.");
+                    //    return "";
+                    //}
                 }
                 catch (Exception ex)
                 {
