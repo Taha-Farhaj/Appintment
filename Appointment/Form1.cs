@@ -66,7 +66,6 @@ namespace Appointment
 
         private void btnCheckEnc_Click(object sender, EventArgs e)
         {
-            //FetchEncValue();
             if (excelData == null)
             {
                 MessageBox.Show("Please upload an Excel file first.");
@@ -82,38 +81,101 @@ namespace Appointment
                 if (string.IsNullOrWhiteSpace(url) || !string.IsNullOrWhiteSpace(enc))
                     continue;
 
-                //listBoxLog.Items.Add($"Processing Row {i + 2}...");
                 var resultEnc = FetchEncValue(url).Result;
                 excelData.Rows[i][14] = resultEnc;
                 dataGridView1.Refresh(); // Show updates in UI
 
-                //// 2. Call SaveBooking API if enc is valid
-                //var row = excelData.Rows[i];
-                //if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
-                //{
-                //    string saveResult = CallSaveBookingApiAsync(row).Result;
-                //    row["Save dsta"] = "save";
-                //    dataGridView1.Refresh();
-                //}
-                //else
-                //{
-                //    row["Save dsta"] = "";
-                //}
+                // 2. Call SaveBooking API if enc is valid
+                var row = excelData.Rows[i];
+                if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
+                {
+                    string saveResult = CallSaveBookingApiAsync(row).Result;
+                    row["Save dsta"] = "save";
+                    dataGridView1.Refresh();
+                }
+                else
+                {
+                    row["Save dsta"] = "";
+                }
             }
+        }
 
-            //string newColumnName = "Enc Value";
-            //if (excelData.Columns.Contains(newColumnName))
-            //    newColumnName += "_" + Guid.NewGuid().ToString("N").Substring(0, 4);
+        private async Task<string> FetchEncValue(string url)
+        {
+            int retryCount = 0;
+            int maxRetries = Convert.ToInt32(txtRateLimit.Text);
+            double timeoutSeconds = Convert.ToDouble(txtInterval.Text);
 
-            //excelData.Columns.Add(newColumnName, typeof(string));
+            var handler = new HttpClientHandler
+            {
+                UseCookies = true,
+                CookieContainer = new System.Net.CookieContainer()
+            };
 
-            //foreach (DataRow row in excelData.Rows)
-            //{
-            //    row[newColumnName] = "Default";
-            //}
+            var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
-            //dataGridView1.DataSource = null; // Reset to apply
-            //dataGridView1.DataSource = excelData;
+            client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
+
+
+
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    btnCheckEnc.Text = $"Check Enc {retryCount + 1}";
+                    var response = client.GetAsync(url).Result;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string html = response.Content.ReadAsStringAsync().Result;
+
+                        HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                        doc.LoadHtml(html);
+
+
+                        var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
+                        if (encNode != null)
+                        {
+                            string encValue = encNode.GetAttributeValue("value", "");
+                            //MessageBox.Show("enc: " + encValue);
+                            return encValue;
+                        }
+                        else
+                        {
+                            //MessageBox.Show("enc input field not found.");
+                            return null;
+                        }
+                    }
+
+
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+                    {
+                        retryCount++;
+                        if (retryCount >= maxRetries)
+                        {
+                            btnCheckEnc.Text = "Check Enc";
+                            return "";
+                        }
+                        //await Task.Delay(1000); // wait before retrying
+                        continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
+                        //MessageBox.Show("Failed after "+maxRetries+" attempts. Error: " + ex.Message);
+                        btnCheckEnc.Text = "Check Enc";
+                        return "";
+                    }
+                    Task.Delay(1000).Wait(); // delay before retry
+                }
+            }
+            return "";
         }
 
         private async Task<string> CallSaveBookingApiAsync(DataRow row)
@@ -363,103 +425,7 @@ namespace Appointment
             }
         }
 
-        private async Task<string> FetchEncValue(string url)
-        {
-            //string url = "https://appointment.mfa.gr/en/reservations/aero/book/?bid=32&day=21&month=8&year=2025&time=11m00&adults=1&children=0";
-
-            int retryCount = 0;
-            int maxRetries = Convert.ToInt32(txtRateLimit.Text);
-            double timeoutSeconds = Convert.ToDouble(txtInterval.Text);
-
-            var handler = new HttpClientHandler
-            {
-                UseCookies = true,
-                CookieContainer = new System.Net.CookieContainer()
-            };
-
-            var client = new HttpClient(handler);
-            client.DefaultRequestHeaders.Add("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-
-            client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
-
-
-
-            while (retryCount < maxRetries)
-            {
-                try
-                {
-                    btnCheckEnc.Text = $"Check Enc {retryCount + 1}";
-                    var response = client.GetAsync(url).Result;
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string html = response.Content.ReadAsStringAsync().Result;
-
-                        // Parse HTML to extract enc value using HtmlAgilityPack
-                        HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                        doc.LoadHtml(html);
-
-
-                        var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
-                        if (encNode != null)
-                        {
-                            string encValue = encNode.GetAttributeValue("value", "");
-                            MessageBox.Show("enc: " + encValue);
-                            return encValue;
-                        }
-                        else
-                        {
-                            MessageBox.Show("enc input field not found.");
-                            return null;
-                        }
-                        //return $"Failed to load booking page: {initialResponse.StatusCode}";
-                    }
-
-
-
-                    if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
-                    {
-                        retryCount++;
-                        //await Task.Delay(1000); // wait before retrying
-                        continue;
-                    }
-
-                    //response.EnsureSuccessStatusCode();
-                    //string html = await response.Content.ReadAsStringAsync();
-
-                    //// Parse HTML to extract enc value using HtmlAgilityPack
-                    //HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                    //doc.LoadHtml(html);
-
-                    //var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
-
-                    //if (encNode != null)
-                    //{
-                    //    string encValue = encNode.GetAttributeValue("value", "");
-                    //    MessageBox.Show("enc: " + encValue);
-                    //    return encValue;
-                    //}
-                    //else
-                    //{
-                    //    MessageBox.Show("enc input field not found.");
-                    //    return "";
-                    //}
-                }
-                catch (Exception ex)
-                {
-                    retryCount++;
-                    if (retryCount >= maxRetries)
-                    {
-                        //MessageBox.Show("Failed after "+maxRetries+" attempts. Error: " + ex.Message);
-                        btnCheckEnc.Text = "Check Enc";
-                        return "";
-                    }
-                    Task.Delay(1000).Wait(); // delay before retry
-                }
-            }
-            return "";
-        }
+        
         private Dictionary<string, string> ParseUrlParameters(string url)
         {
             var uri = new Uri(url);
