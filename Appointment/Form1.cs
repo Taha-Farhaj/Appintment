@@ -1,4 +1,5 @@
-﻿using OfficeOpenXml;
+﻿using Newtonsoft.Json.Linq;
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
@@ -92,12 +94,12 @@ namespace Appointment
                 if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
                 {
                     string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Save dsta"] = "save";
+                    row["Save dsta"] = saveResult;
                     dataGridView1.Refresh();
                 }
                 else
                 {
-                    row["Save dsta"] = "";
+                    row["Save dsta"] = resultEnc;
                 }
             }
         }
@@ -152,7 +154,7 @@ namespace Appointment
                         else
                         {
                             //MessageBox.Show("enc input field not found.");
-                            return null;
+                            return html.Contains("Error") ? "ERROR" : null;
                         }
                     }
 
@@ -218,15 +220,15 @@ namespace Appointment
             { "oemail",     row["E-mail*"]?.ToString() ?? "" },
             { "ocountry",   row["Country"]?.ToString() ?? "" },
             { "ocity",      row["City"]?.ToString() ?? "" },
-            { "oaddress",   row["Address"]?.ToString() ?? "" },
-            { "opostalcode", row["PostalCode"]?.ToString() ?? "" },
-            { "ophone",     row["Mobile*"]?.ToString() ?? "" },
-            { "omobile",    "" },
-            { "ccustom1",   row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString() ?? "" },
-            { "ccustom2",   row["Employer's-Name-in-Greece*"]?.ToString() ?? "" },
-            { "ccustom3",   row["Father's-name*"]?.ToString() ?? "" },
-            { "ccustom4",   row["Passport-Number*"]?.ToString() ?? "" },
-            { "ccustom5",   row["Date-of-Expiry-of-Passport*"]?.ToString() ?? "" },
+            //{ "oaddress",   row["Address"]?.ToString() ?? "" },
+            //{ "opostalcode", row["PostalCode"]?.ToString() ?? "" },
+            { "ophone",     "" },
+            { "omobile",    row["Mobile*"]?.ToString() ?? "" },
+            { "ccustom1",   "Company Name" }, //Company Name
+            { "ccustom2",   "Companyheadquarters" },//Companyheadquarters
+            { "ccustom3",   row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString() ?? "" },
+            //{ "ccustom4",   row["Passport-Number*"]?.ToString() ?? "" },
+            //{ "ccustom5",   row["Date-of-Expiry-of-Passport*"]?.ToString() ?? "" },
             { "p1firstname",row["First-name"]?.ToString() ?? "" },
             { "p1lastname", row["Last-name"]?.ToString() ?? "" },
             { "ocomments",  "" },
@@ -294,7 +296,20 @@ namespace Appointment
                         if (response.IsSuccessStatusCode)
                         {
                             string responseString = response.Content.ReadAsStringAsync().Result;
-                            return "Saved"; // You can parse JSON here if needed
+                            if (!responseString.ToLower().Contains("error"))
+                            {
+                                var obj = JObject.Parse(responseString);
+                                string sucpageUrl = (string)obj["sucpage"];
+
+                                var uri = new Uri(sucpageUrl);
+                                var queryParams = HttpUtility.ParseQueryString(uri.Query);
+                                string rescode = queryParams["rescode"];
+                                return rescode; // You can parse JSON here if needed
+                            }
+                            else
+                            {
+                                return "Error";
+                            }
                         }
                         //else
                         //{
