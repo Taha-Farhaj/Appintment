@@ -18,6 +18,7 @@ namespace Appointment
     {
         private DataTable excelData;
         private readonly HttpClient httpClient = new HttpClient();
+        private string cid = "";
         public Form1()
         {
             InitializeComponent();
@@ -83,6 +84,7 @@ namespace Appointment
 
                 var resultEnc = FetchEncValue(url).Result;
                 excelData.Rows[i][14] = resultEnc;
+                excelData.Rows[i][15] = cid;
                 dataGridView1.Refresh(); // Show updates in UI
 
                 // 2. Call SaveBooking API if enc is valid
@@ -134,6 +136,11 @@ namespace Appointment
                         HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
                         doc.LoadHtml(html);
 
+                        var cidNode = doc.DocumentNode.SelectSingleNode("//input[@name='cid']");
+                        if (cidNode != null)
+                        {
+                            cid = cidNode.GetAttributeValue("value", "");
+                        }
 
                         var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
                         if (encNode != null)
@@ -202,17 +209,17 @@ namespace Appointment
             { "children",   parsed["children"] },
             { "customers",  "1" },
             { "couponcode", "" },
-            { "cid",        "18" },
+            { "cid",        row["cid"]?.ToString() ?? "" },
             { "bid",        parsed["bid"] },
             { "pid",        "0" },
             { "paymod",     "" },
             { "ofirstname", row["First-name"]?.ToString() ?? "" },
             { "olastname",  row["Last-name"]?.ToString() ?? "" },
-            { "oemail",     "test@example.com" },
-            { "ocountry",   "PK" },
+            { "oemail",     row["E-mail*"]?.ToString() ?? "" },
+            { "ocountry",   row["Country"]?.ToString() ?? "" },
             { "ocity",      row["City"]?.ToString() ?? "" },
-            { "oaddress",   "" },
-            { "opostalcode","" },
+            { "oaddress",   row["Address"]?.ToString() ?? "" },
+            { "opostalcode", row["PostalCode"]?.ToString() ?? "" },
             { "ophone",     row["Mobile*"]?.ToString() ?? "" },
             { "omobile",    "" },
             { "ccustom1",   row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString() ?? "" },
@@ -425,7 +432,7 @@ namespace Appointment
             }
         }
 
-        
+
         private Dictionary<string, string> ParseUrlParameters(string url)
         {
             var uri = new Uri(url);
