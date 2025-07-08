@@ -76,8 +76,8 @@ namespace Appointment
             }
             for (int i = 0; i < excelData.Rows.Count; i++)
             {
-                var url = excelData.Rows[i][13].ToString(); // Column N = index 13
-                var enc = excelData.Rows[i][14].ToString(); // Column O = index 14
+                var url = excelData.Rows[i]["URL"].ToString(); // Column N = index 13
+                var enc = excelData.Rows[i]["Enc"].ToString(); // Column O = index 14
 
                 lblCurrentRow.Text = $"Processing Row {i + 1} ..."; // +2 to account for header row
 
@@ -85,8 +85,8 @@ namespace Appointment
                     continue;
 
                 var resultEnc = FetchEncValue(url).Result;
-                excelData.Rows[i][14] = resultEnc;
-                excelData.Rows[i][15] = cid;
+                excelData.Rows[i]["Enc"] = resultEnc;
+                excelData.Rows[i]["CID"] = cid;
                 dataGridView1.Refresh(); // Show updates in UI
 
                 // 2. Call SaveBooking API if enc is valid
@@ -215,22 +215,22 @@ namespace Appointment
             { "bid",        parsed["bid"] },
             { "pid",        "0" },
             { "paymod",     "" },
-            { "ofirstname", row["First-name"]?.ToString() ?? "" },
-            { "olastname",  row["Last-name"]?.ToString() ?? "" },
+            { "ofirstname", row["First-name*"]?.ToString() ?? "" },
+            { "olastname",  row["Last-name*"]?.ToString() ?? "" },
             { "oemail",     row["E-mail*"]?.ToString() ?? "" },
             { "ocountry",   row["Country"]?.ToString() ?? "" },
             { "ocity",      row["City"]?.ToString() ?? "" },
-            //{ "oaddress",   row["Address"]?.ToString() ?? "" },
-            //{ "opostalcode", row["PostalCode"]?.ToString() ?? "" },
+            { "oaddress",   "" },
+            { "opostalcode", "" },
             { "ophone",     "" },
-            { "omobile",    row["Mobile*"]?.ToString() ?? "" },
-            { "ccustom1",   "Company Name" }, //Company Name
-            { "ccustom2",   "Companyheadquarters" },//Companyheadquarters
-            { "ccustom3",   row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString() ?? "" },
+            { "omobile",    "" },
+            { "ccustom1",   row["Company Name"]?.ToString()??"" }, //Company Name
+            { "ccustom2",   row["Company headquarters"]?.ToString() ?? "" },//Companyheadquarters
+            { "ccustom3",   row["G.E.M.I.(GeneralCommercialRegister)Number"]?.ToString() ?? "" },
             //{ "ccustom4",   row["Passport-Number*"]?.ToString() ?? "" },
             //{ "ccustom5",   row["Date-of-Expiry-of-Passport*"]?.ToString() ?? "" },
-            { "p1firstname",row["First-name"]?.ToString() ?? "" },
-            { "p1lastname", row["Last-name"]?.ToString() ?? "" },
+            { "p1firstname",row["V-First-name*"]?.ToString() ?? "" },
+            { "p1lastname", row["V-Last-name*"]?.ToString() ?? "" },
             { "ocomments",  "" },
             { "invoice",    "0" },
             { "enc",        row["Enc"]?.ToString() ?? "" }, // MUST be valid
