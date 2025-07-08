@@ -94,12 +94,12 @@ namespace Appointment
                 if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
                 {
                     string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Save dsta"] = saveResult;
+                    row["Save data"] = saveResult;
                     dataGridView1.Refresh();
                 }
                 else
                 {
-                    row["Save dsta"] = resultEnc;
+                    row["Save data"] = resultEnc;
                 }
             }
         }
