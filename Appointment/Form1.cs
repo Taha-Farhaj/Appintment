@@ -94,12 +94,12 @@ namespace Appointment
                 if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
                 {
                     string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Save data"] = saveResult;
+                    row["Confirm"] = saveResult;
                     dataGridView1.Refresh();
                 }
                 else
                 {
-                    row["Save data"] = resultEnc;
+                    row["Confirm"] = resultEnc;
                 }
             }
         }
@@ -129,7 +129,7 @@ namespace Appointment
             {
                 try
                 {
-                    btnCheckEnc.Text = $"Check Enc {retryCount + 1}";
+                    btnCheckEnc.Text = $"Start Booking {retryCount + 1}";
                     var response = client.GetAsync(url).Result;
                     if (response.IsSuccessStatusCode)
                     {
@@ -165,7 +165,7 @@ namespace Appointment
                         retryCount++;
                         if (retryCount >= maxRetries)
                         {
-                            btnCheckEnc.Text = "Check Enc";
+                            btnCheckEnc.Text = "Start Booking";
                             return "";
                         }
                         //await Task.Delay(1000); // wait before retrying
@@ -178,7 +178,7 @@ namespace Appointment
                     if (retryCount >= maxRetries)
                     {
                         //MessageBox.Show("Failed after "+maxRetries+" attempts. Error: " + ex.Message);
-                        btnCheckEnc.Text = "Check Enc";
+                        btnCheckEnc.Text = "Start Booking";
                         return "";
                     }
                     Task.Delay(1000).Wait(); // delay before retry
@@ -223,14 +223,14 @@ namespace Appointment
             { "oaddress",   "" },
             { "opostalcode", "" },
             { "ophone",     "" },
-            { "omobile",    "" },
-            { "ccustom1",   row["Company Name"]?.ToString()??"" }, //Company Name
-            { "ccustom2",   row["Company headquarters"]?.ToString() ?? "" },//Companyheadquarters
-            { "ccustom3",   row["G.E.M.I.(GeneralCommercialRegister)Number"]?.ToString() ?? "" },
-            //{ "ccustom4",   row["Passport-Number*"]?.ToString() ?? "" },
-            //{ "ccustom5",   row["Date-of-Expiry-of-Passport*"]?.ToString() ?? "" },
-            { "p1firstname",row["V-First-name*"]?.ToString() ?? "" },
-            { "p1lastname", row["V-Last-name*"]?.ToString() ?? "" },
+            { "omobile",    row["Mobile*"]?.ToString() ?? "" },
+            { "ccustom1",   row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString()??"" }, //Company Name
+            { "ccustom2",   row["Employer's-Name-in-Greece*"]?.ToString() ?? "" },//Companyheadquarters
+            { "ccustom3",   row["Father's-name*"]?.ToString() ?? "" },
+            { "ccustom4",   row["Passport-Number*"]?.ToString() ?? "" },
+            { "ccustom5",   row["Date-of-Expiry-of-Passport*"]?.ToString() ?? "" },
+            { "p1firstname",row["First-name"]?.ToString() ?? "" },
+            { "p1lastname", row["Last-name"]?.ToString() ?? "" },
             { "ocomments",  "" },
             { "invoice",    "0" },
             { "enc",        row["Enc"]?.ToString() ?? "" }, // MUST be valid
@@ -279,7 +279,7 @@ namespace Appointment
                 {
                     try
                     {
-                        btnSaveForm.Text = $"Save Data {retryCount + 1}";
+                        btnSave.Text = $"Saving try {retryCount + 1}";
                         // --- Step 2: Send form data ---
                         var content = new FormUrlEncodedContent(formFields);
                         HttpResponseMessage response = client.PostAsync(
@@ -323,7 +323,7 @@ namespace Appointment
                         if (retryCount >= maxRetries)
                         {
                             //MessageBox.Show("Failed after "+maxRetries+" attempts. Error: " + ex.Message);
-                            btnSaveForm.Text = "Save Data";
+                            btnSave.Text = "Saved";
                             return "";
                         }
                         Task.Delay(1000).Wait(); // delay before retry
@@ -498,12 +498,12 @@ namespace Appointment
                 if (!string.IsNullOrWhiteSpace(enc) && !enc.StartsWith("ERROR"))
                 {
                     string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Save data"] = "save";
+                    row["Confirm"] = "save";
                     dataGridView1.Refresh();
                 }
                 else
                 {
-                    row["Save dsta"] = "";
+                    row["Confirm"] = "";
                 }
             }
 
