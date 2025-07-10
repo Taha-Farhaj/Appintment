@@ -159,7 +159,7 @@ namespace Appointment
             this.txtInterval.Name = "txtInterval";
             this.txtInterval.Size = new System.Drawing.Size(56, 20);
             this.txtInterval.TabIndex = 4;
-            this.txtInterval.Text = "2";
+            this.txtInterval.Text = "0";
             this.txtInterval.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // lblCurrentRow

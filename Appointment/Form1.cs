@@ -86,7 +86,7 @@ namespace Appointment
 
                 var resultEnc = FetchEncValue(url).Result;
                 excelData.Rows[i]["Enc"] = resultEnc;
-                excelData.Rows[i]["CID"] = cid;
+                excelData.Rows[i]["Cid"] = cid;
                 dataGridView1.Refresh(); // Show updates in UI
 
                 // 2. Call SaveBooking API if enc is valid
@@ -94,12 +94,12 @@ namespace Appointment
                 if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
                 {
                     string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Confirm"] = saveResult;
+                    row["Status"] = saveResult;
                     dataGridView1.Refresh();
                 }
                 else
                 {
-                    row["Confirm"] = resultEnc;
+                    row["Status"] = resultEnc;
                 }
             }
         }
@@ -117,6 +117,11 @@ namespace Appointment
             };
 
             var client = new HttpClient(handler);
+            if (timeoutSeconds != 0)
+            {
+                client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            }
+            
             client.DefaultRequestHeaders.Add("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
@@ -245,6 +250,10 @@ namespace Appointment
                 };
 
                 var client = new HttpClient(handler);
+                if (timeoutSeconds != 0)
+                {
+                    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+                }
                 client.DefaultRequestHeaders.Add("User-Agent",
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
@@ -498,12 +507,12 @@ namespace Appointment
                 if (!string.IsNullOrWhiteSpace(enc) && !enc.StartsWith("ERROR"))
                 {
                     string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Confirm"] = "save";
+                    row["Status"] = "save";
                     dataGridView1.Refresh();
                 }
                 else
                 {
-                    row["Confirm"] = "";
+                    row["Status"] = "";
                 }
             }
 
