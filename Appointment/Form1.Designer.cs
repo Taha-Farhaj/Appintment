@@ -42,6 +42,7 @@ namespace Appointment
             this.txtInterval = new System.Windows.Forms.TextBox();
             this.lblCurrentRow = new System.Windows.Forms.Label();
             this.btnSave = new System.Windows.Forms.Label();
+            this.btnStop = new System.Windows.Forms.Button();
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.flowLayoutPanel1.SuspendLayout();
@@ -75,6 +76,7 @@ namespace Appointment
             // 
             this.flowLayoutPanel1.Controls.Add(this.button1);
             this.flowLayoutPanel1.Controls.Add(this.btnCheckEnc);
+            this.flowLayoutPanel1.Controls.Add(this.btnStop);
             this.flowLayoutPanel1.Controls.Add(this.btnDownloadExcel);
             this.flowLayoutPanel1.Controls.Add(this.label1);
             this.flowLayoutPanel1.Controls.Add(this.txtRateLimit);
@@ -110,7 +112,7 @@ namespace Appointment
             // 
             // btnDownloadExcel
             // 
-            this.btnDownloadExcel.Location = new System.Drawing.Point(214, 3);
+            this.btnDownloadExcel.Location = new System.Drawing.Point(295, 3);
             this.btnDownloadExcel.Name = "btnDownloadExcel";
             this.btnDownloadExcel.Size = new System.Drawing.Size(102, 23);
             this.btnDownloadExcel.TabIndex = 2;
@@ -124,7 +126,7 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(322, 0);
+            this.label1.Location = new System.Drawing.Point(403, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(44, 29);
             this.label1.TabIndex = 5;
@@ -133,7 +135,7 @@ namespace Appointment
             // 
             // txtRateLimit
             // 
-            this.txtRateLimit.Location = new System.Drawing.Point(372, 3);
+            this.txtRateLimit.Location = new System.Drawing.Point(453, 3);
             this.txtRateLimit.Name = "txtRateLimit";
             this.txtRateLimit.Size = new System.Drawing.Size(57, 20);
             this.txtRateLimit.TabIndex = 3;
@@ -146,7 +148,7 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(435, 0);
+            this.label2.Location = new System.Drawing.Point(516, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(42, 29);
             this.label2.TabIndex = 6;
@@ -155,7 +157,7 @@ namespace Appointment
             // 
             // txtInterval
             // 
-            this.txtInterval.Location = new System.Drawing.Point(483, 3);
+            this.txtInterval.Location = new System.Drawing.Point(564, 3);
             this.txtInterval.Name = "txtInterval";
             this.txtInterval.Size = new System.Drawing.Size(56, 20);
             this.txtInterval.TabIndex = 4;
@@ -168,7 +170,7 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lblCurrentRow.AutoSize = true;
-            this.lblCurrentRow.Location = new System.Drawing.Point(545, 0);
+            this.lblCurrentRow.Location = new System.Drawing.Point(626, 0);
             this.lblCurrentRow.Name = "lblCurrentRow";
             this.lblCurrentRow.Size = new System.Drawing.Size(79, 29);
             this.lblCurrentRow.TabIndex = 7;
@@ -181,12 +183,22 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.btnSave.AutoSize = true;
-            this.btnSave.Location = new System.Drawing.Point(630, 0);
+            this.btnSave.Location = new System.Drawing.Point(711, 0);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(54, 29);
             this.btnSave.TabIndex = 8;
             this.btnSave.Text = "Saving try";
             this.btnSave.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // btnStop
+            // 
+            this.btnStop.Location = new System.Drawing.Point(214, 3);
+            this.btnStop.Name = "btnStop";
+            this.btnStop.Size = new System.Drawing.Size(75, 23);
+            this.btnStop.TabIndex = 9;
+            this.btnStop.Text = "Stop";
+            this.btnStop.UseVisualStyleBackColor = true;
+            this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
             // 
             // Form1
             // 
@@ -220,6 +232,7 @@ namespace Appointment
         private Label label2;
         private Label lblCurrentRow;
         private Label btnSave;
+        private Button btnStop;
     }
 }
 

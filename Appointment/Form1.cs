@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
@@ -21,6 +22,9 @@ namespace Appointment
         private DataTable excelData;
         private readonly HttpClient httpClient = new HttpClient();
         private string cid = "";
+        private CancellationTokenSource cancellationTokenSource;
+        private bool isProcessing = false;
+
         public Form1()
         {
             InitializeComponent();
@@ -67,8 +71,17 @@ namespace Appointment
             }
         }
 
-        private void btnCheckEnc_Click(object sender, EventArgs e)
+        private async void btnCheckEnc_Click(object sender, EventArgs e)
         {
+            if (isProcessing)
+            {
+                MessageBox.Show("Process is already running.");
+                return;
+            }
+            isProcessing = true;
+            cancellationTokenSource = new CancellationTokenSource();
+            btnStop.Enabled = true;
+
             if (excelData == null)
             {
                 MessageBox.Show("Please upload an Excel file first.");
@@ -84,11 +97,15 @@ namespace Appointment
                 if (string.IsNullOrWhiteSpace(url) || !string.IsNullOrWhiteSpace(enc))
                     continue;
 
-                var resultEnc = FetchEncValue(url).Result;
+                var resultEnc = await Task.Run(() => FetchEncValue(url, cancellationTokenSource.Token));
+                //cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                //var resultEnc = FetchEncValue(url).Result;
                 excelData.Rows[i]["Enc"] = resultEnc;
                 excelData.Rows[i]["Cid"] = cid;
                 dataGridView1.Refresh(); // Show updates in UI
 
+                if (resultEnc == "Cancelled")
+                    break;
                 // 2. Call SaveBooking API if enc is valid
                 var row = excelData.Rows[i];
                 if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
@@ -104,7 +121,7 @@ namespace Appointment
             }
         }
 
-        private async Task<string> FetchEncValue(string url)
+        private async Task<string> FetchEncValue(string url, CancellationToken token)
         {
             int retryCount = 0;
             int maxRetries = Convert.ToInt32(txtRateLimit.Text);
@@ -132,6 +149,13 @@ namespace Appointment
 
             while (retryCount < maxRetries)
             {
+                if (cancellationTokenSource.IsCancellationRequested)
+                {
+                    btnCheckEnc.Text = "Start Booking";
+                    isProcessing = false;
+                    cancellationTokenSource.Dispose();
+                    return "Cancelled";
+                }
                 try
                 {
                     btnCheckEnc.Text = $"Start Booking {retryCount + 1}";
@@ -529,6 +553,15 @@ namespace Appointment
 
             //dataGridView1.DataSource = null; // Reset to apply
             //dataGridView1.DataSource = excelData;
+        }
+
+        private void btnStop_Click(object sender, EventArgs e)
+        {
+            if (cancellationTokenSource != null && isProcessing)
+            {
+                cancellationTokenSource.Cancel();
+                MessageBox.Show("Cancellation requested...");
+            }
         }
     }
 }
