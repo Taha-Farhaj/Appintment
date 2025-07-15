@@ -35,6 +35,7 @@ namespace Appointment
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.button1 = new System.Windows.Forms.Button();
             this.btnCheckEnc = new System.Windows.Forms.Button();
+            this.btnStop = new System.Windows.Forms.Button();
             this.btnDownloadExcel = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.txtRateLimit = new System.Windows.Forms.TextBox();
@@ -42,7 +43,7 @@ namespace Appointment
             this.txtInterval = new System.Windows.Forms.TextBox();
             this.lblCurrentRow = new System.Windows.Forms.Label();
             this.btnSave = new System.Windows.Forms.Label();
-            this.btnStop = new System.Windows.Forms.Button();
+            this.txtWebsiteUrl = new System.Windows.Forms.TextBox();
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.flowLayoutPanel1.SuspendLayout();
@@ -84,6 +85,7 @@ namespace Appointment
             this.flowLayoutPanel1.Controls.Add(this.txtInterval);
             this.flowLayoutPanel1.Controls.Add(this.lblCurrentRow);
             this.flowLayoutPanel1.Controls.Add(this.btnSave);
+            this.flowLayoutPanel1.Controls.Add(this.txtWebsiteUrl);
             this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(3, 3);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
@@ -109,6 +111,16 @@ namespace Appointment
             this.btnCheckEnc.Text = "Start Booking";
             this.btnCheckEnc.UseVisualStyleBackColor = true;
             this.btnCheckEnc.Click += new System.EventHandler(this.btnCheckEnc_Click);
+            // 
+            // btnStop
+            // 
+            this.btnStop.Location = new System.Drawing.Point(214, 3);
+            this.btnStop.Name = "btnStop";
+            this.btnStop.Size = new System.Drawing.Size(75, 23);
+            this.btnStop.TabIndex = 9;
+            this.btnStop.Text = "Stop";
+            this.btnStop.UseVisualStyleBackColor = true;
+            this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
             // 
             // btnDownloadExcel
             // 
@@ -139,7 +151,7 @@ namespace Appointment
             this.txtRateLimit.Name = "txtRateLimit";
             this.txtRateLimit.Size = new System.Drawing.Size(57, 20);
             this.txtRateLimit.TabIndex = 3;
-            this.txtRateLimit.Text = "10";
+            this.txtRateLimit.Text = "30";
             this.txtRateLimit.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // label2
@@ -190,15 +202,13 @@ namespace Appointment
             this.btnSave.Text = "Saving try";
             this.btnSave.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // btnStop
+            // txtWebsiteUrl
             // 
-            this.btnStop.Location = new System.Drawing.Point(214, 3);
-            this.btnStop.Name = "btnStop";
-            this.btnStop.Size = new System.Drawing.Size(75, 23);
-            this.btnStop.TabIndex = 9;
-            this.btnStop.Text = "Stop";
-            this.btnStop.UseVisualStyleBackColor = true;
-            this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
+            this.txtWebsiteUrl.Location = new System.Drawing.Point(3, 32);
+            this.txtWebsiteUrl.Name = "txtWebsiteUrl";
+            this.txtWebsiteUrl.Size = new System.Drawing.Size(394, 20);
+            this.txtWebsiteUrl.TabIndex = 10;
+            this.txtWebsiteUrl.Text = "https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook";
             // 
             // Form1
             // 
@@ -233,6 +243,7 @@ namespace Appointment
         private Label lblCurrentRow;
         private Label btnSave;
         private Button btnStop;
+        private TextBox txtWebsiteUrl;
     }
 }
 

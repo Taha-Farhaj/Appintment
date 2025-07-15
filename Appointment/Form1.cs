@@ -8,6 +8,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -138,12 +139,15 @@ namespace Appointment
             {
                 client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
             }
-            
+
             client.DefaultRequestHeaders.Add("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
-            client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
+            Uri uri = new Uri(url);
+            string referrer = uri.GetLeftPart(UriPartial.Path);
+            client.DefaultRequestHeaders.Referrer = new Uri(referrer);
+
 
 
 
@@ -283,8 +287,9 @@ namespace Appointment
                     "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
 
-
-                client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
+                Uri uri = new Uri(url);
+                string referrer = uri.GetLeftPart(UriPartial.Path);
+                client.DefaultRequestHeaders.Referrer = new Uri(referrer);
 
                 //// --- Step 1: Load page to get PHP session cookies ---
                 //string fullBookingUrl = url;
@@ -315,8 +320,7 @@ namespace Appointment
                         btnSave.Text = $"Saving try {retryCount + 1}";
                         // --- Step 2: Send form data ---
                         var content = new FormUrlEncodedContent(formFields);
-                        HttpResponseMessage response = client.PostAsync(
-                            "https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content).Result;
+                        HttpResponseMessage response = client.PostAsync(txtWebsiteUrl.Text, content).Result;
 
                         string result = response.Content.ReadAsStringAsync().Result;
                         if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
@@ -334,7 +338,7 @@ namespace Appointment
                                 var obj = JObject.Parse(responseString);
                                 string sucpageUrl = (string)obj["sucpage"];
 
-                                var uri = new Uri(sucpageUrl);
+                                uri = new Uri(sucpageUrl);
                                 var queryParams = HttpUtility.ParseQueryString(uri.Query);
                                 string rescode = queryParams["rescode"];
                                 return rescode; // You can parse JSON here if needed
