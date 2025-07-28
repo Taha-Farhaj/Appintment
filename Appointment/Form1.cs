@@ -7,6 +7,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -37,6 +38,45 @@ namespace Appointment
                 dataGridView1.DataSource = excelData;
             }
         }
+
+        public void t1()
+        {
+            var loginUrl = "https://www.supersaas.com/schedule/login/grcon-isl-pakistan/National_visa_for_Students";
+            var targetUrl = "https://www.supersaas.com/schedule/grcon-isl-pakistan/National_visa_for_Students";
+
+            var cookieContainer = new CookieContainer();
+            var handler = new HttpClientHandler
+            {
+                CookieContainer = cookieContainer,
+                AllowAutoRedirect = true, // Let it follow redirects after POST
+                UseCookies = true
+            };
+
+            using (var client = new HttpClient(handler))
+            {
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+
+                // 1. POST Login
+                var postData = new FormUrlEncodedContent(new[]
+                {
+                new KeyValuePair<string, string>("name", "qamar@saimways.com"), // replace
+                new KeyValuePair<string, string>("password", "Qamar@125#")       // replace
+            });
+
+                var loginResponse = client.PostAsync(loginUrl, postData).Result;
+                Console.WriteLine("Login Status: " + loginResponse.StatusCode);
+
+                // 2. GET Final Page (after login)
+                var finalResponse = client.GetAsync(targetUrl).Result;
+                Console.WriteLine("Final Page Status: " + finalResponse.StatusCode);
+
+                string finalHtml = finalResponse.Content.ReadAsStringAsync().Result;
+                Console.WriteLine("Final Page HTML (trimmed):\n");
+                Console.WriteLine(finalHtml.Substring(0, 1000)); // Display part of the HTML
+            }
+     
+}
 
         private DataTable ReadExcelToDataTable(string filePath)
         {
@@ -69,6 +109,7 @@ namespace Appointment
 
         private void btnCheckEnc_Click(object sender, EventArgs e)
         {
+            t1();
             if (excelData == null)
             {
                 MessageBox.Show("Please upload an Excel file first.");
