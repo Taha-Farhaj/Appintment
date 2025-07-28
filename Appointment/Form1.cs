@@ -9,8 +9,10 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
@@ -22,6 +24,9 @@ namespace Appointment
         private DataTable excelData;
         private readonly HttpClient httpClient = new HttpClient();
         private string cid = "";
+        private CancellationTokenSource cancellationTokenSource;
+        private bool isProcessing = false;
+
         public Form1()
         {
             InitializeComponent();
@@ -107,9 +112,17 @@ namespace Appointment
             }
         }
 
-        private void btnCheckEnc_Click(object sender, EventArgs e)
+        private async void btnCheckEnc_Click(object sender, EventArgs e)
         {
-            t1();
+            if (isProcessing)
+            {
+                MessageBox.Show("Process is already running.");
+                return;
+            }
+            isProcessing = true;
+            cancellationTokenSource = new CancellationTokenSource();
+            btnStop.Enabled = true;
+
             if (excelData == null)
             {
                 MessageBox.Show("Please upload an Excel file first.");
@@ -125,11 +138,15 @@ namespace Appointment
                 if (string.IsNullOrWhiteSpace(url) || !string.IsNullOrWhiteSpace(enc))
                     continue;
 
-                var resultEnc = FetchEncValue(url).Result;
+                var resultEnc = await Task.Run(() => FetchEncValue(url, cancellationTokenSource.Token));
+                //cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                //var resultEnc = FetchEncValue(url).Result;
                 excelData.Rows[i]["Enc"] = resultEnc;
                 excelData.Rows[i]["Cid"] = cid;
                 dataGridView1.Refresh(); // Show updates in UI
 
+                if (resultEnc == "Cancelled")
+                    break;
                 // 2. Call SaveBooking API if enc is valid
                 var row = excelData.Rows[i];
                 if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
@@ -145,7 +162,7 @@ namespace Appointment
             }
         }
 
-        private async Task<string> FetchEncValue(string url)
+        private async Task<string> FetchEncValue(string url, CancellationToken token)
         {
             int retryCount = 0;
             int maxRetries = Convert.ToInt32(txtRateLimit.Text);
@@ -162,17 +179,27 @@ namespace Appointment
             {
                 client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
             }
-            
+
             client.DefaultRequestHeaders.Add("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
-            client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
+            Uri uri = new Uri(url);
+            string referrer = uri.GetLeftPart(UriPartial.Path);
+            client.DefaultRequestHeaders.Referrer = new Uri(referrer);
+
 
 
 
             while (retryCount < maxRetries)
             {
+                if (cancellationTokenSource.IsCancellationRequested)
+                {
+                    btnCheckEnc.Text = "Start Booking";
+                    isProcessing = false;
+                    cancellationTokenSource.Dispose();
+                    return "Cancelled";
+                }
                 try
                 {
                     btnCheckEnc.Text = $"Start Booking {retryCount + 1}";
@@ -300,8 +327,9 @@ namespace Appointment
                     "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
 
-
-                client.DefaultRequestHeaders.Referrer = new Uri("https://appointment.mfa.gr/en/reservations/aero/book/");
+                Uri uri = new Uri(url);
+                string referrer = uri.GetLeftPart(UriPartial.Path);
+                client.DefaultRequestHeaders.Referrer = new Uri(referrer);
 
                 //// --- Step 1: Load page to get PHP session cookies ---
                 //string fullBookingUrl = url;
@@ -332,8 +360,7 @@ namespace Appointment
                         btnSave.Text = $"Saving try {retryCount + 1}";
                         // --- Step 2: Send form data ---
                         var content = new FormUrlEncodedContent(formFields);
-                        HttpResponseMessage response = client.PostAsync(
-                            "https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content).Result;
+                        HttpResponseMessage response = client.PostAsync(txtWebsiteUrl.Text, content).Result;
 
                         string result = response.Content.ReadAsStringAsync().Result;
                         if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
@@ -351,7 +378,7 @@ namespace Appointment
                                 var obj = JObject.Parse(responseString);
                                 string sucpageUrl = (string)obj["sucpage"];
 
-                                var uri = new Uri(sucpageUrl);
+                                uri = new Uri(sucpageUrl);
                                 var queryParams = HttpUtility.ParseQueryString(uri.Query);
                                 string rescode = queryParams["rescode"];
                                 return rescode; // You can parse JSON here if needed
@@ -570,6 +597,15 @@ namespace Appointment
 
             //dataGridView1.DataSource = null; // Reset to apply
             //dataGridView1.DataSource = excelData;
+        }
+
+        private void btnStop_Click(object sender, EventArgs e)
+        {
+            if (cancellationTokenSource != null && isProcessing)
+            {
+                cancellationTokenSource.Cancel();
+                MessageBox.Show("Cancellation requested...");
+            }
         }
     }
 }
