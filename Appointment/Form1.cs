@@ -1,5 +1,8 @@
 ﻿using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -26,6 +29,7 @@ namespace Appointment
         private string cid = "";
         private CancellationTokenSource cancellationTokenSource;
         private bool isProcessing = false;
+        private ChromeDriver driver = new ChromeDriver();
 
         public Form1()
         {
@@ -44,44 +48,146 @@ namespace Appointment
             }
         }
 
-        public void t1()
+        private string Chromejob(int row = 2)
         {
-            var loginUrl = "https://www.supersaas.com/schedule/login/grcon-isl-pakistan/National_visa_for_Students";
-            var targetUrl = "https://www.supersaas.com/schedule/grcon-isl-pakistan/National_visa_for_Students";
-
-            var cookieContainer = new CookieContainer();
-            var handler = new HttpClientHandler
+            if (cancellationTokenSource.IsCancellationRequested)
             {
-                CookieContainer = cookieContainer,
-                AllowAutoRedirect = true, // Let it follow redirects after POST
-                UseCookies = true
-            };
-
-            using (var client = new HttpClient(handler))
-            {
-                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-
-                // 1. POST Login
-                var postData = new FormUrlEncodedContent(new[]
-                {
-                new KeyValuePair<string, string>("name", "qamar@saimways.com"), // replace
-                new KeyValuePair<string, string>("password", "Qamar@125#")       // replace
-            });
-
-                var loginResponse = client.PostAsync(loginUrl, postData).Result;
-                Console.WriteLine("Login Status: " + loginResponse.StatusCode);
-
-                // 2. GET Final Page (after login)
-                var finalResponse = client.GetAsync(targetUrl).Result;
-                Console.WriteLine("Final Page Status: " + finalResponse.StatusCode);
-
-                string finalHtml = finalResponse.Content.ReadAsStringAsync().Result;
-                Console.WriteLine("Final Page HTML (trimmed):\n");
-                Console.WriteLine(finalHtml.Substring(0, 1000)); // Display part of the HTML
+                btnCheckEnc.Text = "Start Booking";
+                isProcessing = false;
+                cancellationTokenSource.Dispose();
+                return "Cancelled";
             }
-     
-}
+            try
+            {
+                int rowCount = excelData.Rows.Count;
+
+                // Start Chrome
+               
+
+                string username = excelData.Rows[row]["Email"].ToString();
+                string password = excelData.Rows[row][2].ToString();
+                string phone = excelData.Rows[row][3].ToString();
+                string mobile = excelData.Rows[row][4].ToString();
+                string greeceRegion = excelData.Rows[row][5].ToString();
+                string apofasiNumber = excelData.Rows[row][6].ToString();
+                string employeeName = excelData.Rows[row][7].ToString();
+                string passportNumber = excelData.Rows[row][8].ToString();
+                string passportExp = excelData.Rows[row][9].ToString();
+
+                // Navigate to login page
+                driver.Navigate().GoToUrl(txtWebsiteUrl.Text);
+
+                // Fill login form
+                driver.FindElement(By.Id("name")).Clear();
+                driver.FindElement(By.Id("name")).SendKeys(username);
+                driver.FindElement(By.Id("password")).SendKeys(password);
+                driver.FindElement(By.ClassName("i-login-g")).Click();
+
+                Thread.Sleep(2000); // Wait for login
+
+                // Check for availability (adjust logic based on actual DOM)
+                if (!driver.PageSource.Contains("No available space found") && !driver.PageSource.Contains("Invalid password"))
+                {
+                    Console.WriteLine("Slot available");
+
+                    // Fill appointment form
+                    //driver.FindElement(By.Id("appointment_field")).SendKeys(appointmentData);
+                    //driver.FindElement(By.Id("submit_button")).Click();
+                    //Console.WriteLine($"Appointment submitted for {username}");
+                    // Click the first available row
+                    //driver.FindElement(By.XPath("//ul[@class='ts']/li[text()='Available']")).Click();
+
+                    var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+                    IWebElement availableBtn = wait.Until(d => d.FindElement(By.CssSelector("ul.ts li[onclick=\"switch_view('free')\"]")));
+
+                    try
+                    {
+                        // Try standard click
+                        availableBtn.Click();
+                    }
+                    catch (ElementNotInteractableException)
+                    {
+                        // Fallback to JS click
+                        IJavaScriptExecutor js = (IJavaScriptExecutor)driver;
+                        js.ExecuteScript("arguments[0].click();", availableBtn);
+                    }
+
+                    var slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
+                    if (slotRows.Count == 0)
+                    {
+                        Console.WriteLine($"No slots found for user: {username}");
+                    }
+
+                    for (int i = 0; i < slotRows.Count; i++)
+                    {
+                        try
+                        {
+                            slotRows[i].Click();
+                            Thread.Sleep(1000);
+
+                            // Click "New Appointment" icon
+                            //var newApptIcon = driver.FindElement(By.CssSelector("span.i.i-p.col0"));
+                            //newApptIcon.Click();
+                            //Thread.Sleep(1000);
+
+                            // Fill popup form fields(replace with actual field names)
+                            driver.FindElement(By.Id("reservation_phone")).SendKeys(phone);
+                            driver.FindElement(By.Id("reservation_mobile")).Clear();
+                            driver.FindElement(By.Id("reservation_mobile")).SendKeys(mobile);
+
+                            // Click submit
+                            var createBtn = wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Create appointment')]")));
+
+                            // Scroll into view (optional, to avoid not-interactable errors)
+                            ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView(true);", createBtn);
+                            Thread.Sleep(200); // brief pause to ensure visibility
+
+                            // Click the button
+                            createBtn.Click();
+                            Console.WriteLine($"Appointment submitted for {username}");
+                            break;
+
+                        }
+                        catch (Exception)
+                        {
+                            slotRows[i].Click();
+                        }
+                    }
+
+
+                    IWebElement dropdown = driver.FindElement(By.Id("form_1"));
+
+                    driver.FindElement(By.Id("form_1")).Click();
+                    //driver.FindElement(By.XPath("//div[text()='"+greeceRegion+"']")).Click();
+                    driver.FindElement(By.Id("form_2")).SendKeys(apofasiNumber);
+                    driver.FindElement(By.Id("form_3")).SendKeys(employeeName);
+                    driver.FindElement(By.Id("form_4")).SendKeys(passportNumber);
+                    driver.FindElement(By.Id("form_5")).SendKeys(passportExp);
+
+                    //driver.FindElement(By.Name("form_commit")).Click();
+
+                    Thread.Sleep(2000);
+                    driver.Navigate().GoToUrl("https://www.supersaas.com/users/logout/Saimways?form=form_2&return=Work");
+                    //driver.Quit();
+                    //Thread.Sleep(2000);
+                }
+                else
+                {
+                    Console.WriteLine("No appointment slot available");
+                    return "Ivalid Passord";
+                    //driver.Quit();
+                }
+                //Thread.Sleep(2000);
+                //driver.Navigate().GoToUrl("https://www.supersaas.com/users/logout/Saimways?form=form_2&return=Work");
+                
+
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+            return "";
+        }
 
         private DataTable ReadExcelToDataTable(string filePath)
         {
@@ -114,6 +220,7 @@ namespace Appointment
 
         private async void btnCheckEnc_Click(object sender, EventArgs e)
         {
+
             if (isProcessing)
             {
                 MessageBox.Show("Process is already running.");
@@ -130,368 +237,29 @@ namespace Appointment
             }
             for (int i = 0; i < excelData.Rows.Count; i++)
             {
-                var url = excelData.Rows[i]["URL"].ToString(); // Column N = index 13
-                var enc = excelData.Rows[i]["Enc"].ToString(); // Column O = index 14
+                //var url = excelData.Rows[i]["URL"].ToString(); // Column N = index 13
+                //var enc = excelData.Rows[i]["Enc"].ToString(); // Column O = index 14
 
-                lblCurrentRow.Text = $"Processing Row {i + 1} ..."; // +2 to account for header row
+                //lblCurrentRow.Text = $"Processing Row {i + 1} ..."; // +2 to account for header row
 
-                if (string.IsNullOrWhiteSpace(url) || !string.IsNullOrWhiteSpace(enc))
-                    continue;
+                //if (string.IsNullOrWhiteSpace(url) || !string.IsNullOrWhiteSpace(enc))
+                //    continue;
 
-                var resultEnc = await Task.Run(() => FetchEncValue(url, cancellationTokenSource.Token));
+                //var resultEnc = await Task.Run(() => FetchEncValue(url, cancellationTokenSource.Token));
                 //cancellationTokenSource.Token.ThrowIfCancellationRequested();
                 //var resultEnc = FetchEncValue(url).Result;
-                excelData.Rows[i]["Enc"] = resultEnc;
-                excelData.Rows[i]["Cid"] = cid;
+                var status = Chromejob(i);
+                excelData.Rows[i]["Status"] = status;
                 dataGridView1.Refresh(); // Show updates in UI
 
-                if (resultEnc == "Cancelled")
+                if (status == "Cancelled")
                     break;
-                // 2. Call SaveBooking API if enc is valid
-                var row = excelData.Rows[i];
-                if (!string.IsNullOrWhiteSpace(resultEnc) && !resultEnc.StartsWith("ERROR"))
-                {
-                    string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Status"] = saveResult;
-                    dataGridView1.Refresh();
-                }
-                else
-                {
-                    row["Status"] = resultEnc;
-                }
+
             }
+            driver.Quit();
         }
 
-        private async Task<string> FetchEncValue(string url, CancellationToken token)
-        {
-            int retryCount = 0;
-            int maxRetries = Convert.ToInt32(txtRateLimit.Text);
-            double timeoutSeconds = Convert.ToDouble(txtInterval.Text);
-
-            var handler = new HttpClientHandler
-            {
-                UseCookies = true,
-                CookieContainer = new System.Net.CookieContainer()
-            };
-
-            var client = new HttpClient(handler);
-            if (timeoutSeconds != 0)
-            {
-                client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
-            }
-
-            client.DefaultRequestHeaders.Add("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-
-            Uri uri = new Uri(url);
-            string referrer = uri.GetLeftPart(UriPartial.Path);
-            client.DefaultRequestHeaders.Referrer = new Uri(referrer);
-
-
-
-
-            while (retryCount < maxRetries)
-            {
-                if (cancellationTokenSource.IsCancellationRequested)
-                {
-                    btnCheckEnc.Text = "Start Booking";
-                    isProcessing = false;
-                    cancellationTokenSource.Dispose();
-                    return "Cancelled";
-                }
-                try
-                {
-                    btnCheckEnc.Text = $"Start Booking {retryCount + 1}";
-                    var response = client.GetAsync(url).Result;
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string html = response.Content.ReadAsStringAsync().Result;
-
-                        HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                        doc.LoadHtml(html);
-
-                        var cidNode = doc.DocumentNode.SelectSingleNode("//input[@name='cid']");
-                        if (cidNode != null)
-                        {
-                            cid = cidNode.GetAttributeValue("value", "");
-                        }
-
-                        var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
-                        if (encNode != null)
-                        {
-                            string encValue = encNode.GetAttributeValue("value", "");
-                            //MessageBox.Show("enc: " + encValue);
-                            return encValue;
-                        }
-                        else
-                        {
-                            //MessageBox.Show("enc input field not found.");
-                            return html.Contains("Error") ? "ERROR" : null;
-                        }
-                    }
-
-
-
-                    if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
-                    {
-                        retryCount++;
-                        if (retryCount >= maxRetries)
-                        {
-                            btnCheckEnc.Text = "Start Booking";
-                            return "";
-                        }
-                        //await Task.Delay(1000); // wait before retrying
-                        continue;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    retryCount++;
-                    if (retryCount >= maxRetries)
-                    {
-                        //MessageBox.Show("Failed after "+maxRetries+" attempts. Error: " + ex.Message);
-                        btnCheckEnc.Text = "Start Booking";
-                        return "";
-                    }
-                    Task.Delay(1000).Wait(); // delay before retry
-                }
-            }
-            return "";
-        }
-
-        private async Task<string> CallSaveBookingApiAsync(DataRow row)
-        {
-            try
-            {
-                int retryCount = 0;
-                int maxRetries = Convert.ToInt32(txtRateLimit.Text);
-                double timeoutSeconds = Convert.ToDouble(txtInterval.Text);
-
-                string url = row["Url"]?.ToString();
-                var parsed = ParseUrlParameters(url);
-
-                string rawTime = parsed["time"]; // e.g. 11m00
-                string formattedTime = rawTime.Replace("m", ":");
-
-                string bookDate = $"{parsed["year"]}-{parsed["month"].PadLeft(2, '0')}-{parsed["day"].PadLeft(2, '0')}";
-
-                var formFields = new Dictionary<string, string>
-        {
-            { "bookdate",   bookDate },
-            { "booktime",   formattedTime },
-            { "adults",     parsed["adults"] },
-            { "children",   parsed["children"] },
-            { "customers",  "1" },
-            { "couponcode", "" },
-            { "cid",        row["cid"]?.ToString() ?? "" },
-            { "bid",        parsed["bid"] },
-            { "pid",        "0" },
-            { "paymod",     "" },
-            { "ofirstname", row["First-name*"]?.ToString() ?? "" },
-            { "olastname",  row["Last-name*"]?.ToString() ?? "" },
-            { "oemail",     row["E-mail*"]?.ToString() ?? "" },
-            { "ocountry",   row["Country"]?.ToString() ?? "" },
-            { "ocity",      row["City"]?.ToString() ?? "" },
-            { "oaddress",   "" },
-            { "opostalcode", "" },
-            { "ophone",     "" },
-            { "omobile",    row["Mobile*"]?.ToString() ?? "" },
-            { "ccustom1",   row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString()??"" }, //Company Name
-            { "ccustom2",   row["Employer's-Name-in-Greece*"]?.ToString() ?? "" },//Companyheadquarters
-            { "ccustom3",   row["Father's-name*"]?.ToString() ?? "" },
-            { "ccustom4",   row["Passport-Number*"]?.ToString() ?? "" },
-            { "ccustom5",   row["Date-of-Expiry-of-Passport*"]?.ToString() ?? "" },
-            { "p1firstname",row["First-name"]?.ToString() ?? "" },
-            { "p1lastname", row["Last-name"]?.ToString() ?? "" },
-            { "ocomments",  "" },
-            { "invoice",    "0" },
-            { "enc",        row["Enc"]?.ToString() ?? "" }, // MUST be valid
-            { "rnd",        new Random().Next(1, 100).ToString() }
-        };
-
-                // --- Prepare HttpClient with session/cookies ---
-                var handler = new HttpClientHandler
-                {
-                    UseCookies = true,
-                    CookieContainer = new System.Net.CookieContainer()
-                };
-
-                var client = new HttpClient(handler);
-                if (timeoutSeconds != 0)
-                {
-                    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
-                }
-                client.DefaultRequestHeaders.Add("User-Agent",
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-
-
-                Uri uri = new Uri(url);
-                string referrer = uri.GetLeftPart(UriPartial.Path);
-                client.DefaultRequestHeaders.Referrer = new Uri(referrer);
-
-                //// --- Step 1: Load page to get PHP session cookies ---
-                //string fullBookingUrl = url;
-                //var initialResponse = client.GetAsync(fullBookingUrl).Result;
-                //if (initialResponse.IsSuccessStatusCode)
-                //{
-                //    string html = initialResponse.Content.ReadAsStringAsync().Result;
-
-                //    // Parse HTML to extract enc value using HtmlAgilityPack
-                //    HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
-                //    doc.LoadHtml(html);
-
-
-                //    var encNode = doc.DocumentNode.SelectSingleNode("//input[@name='enc']");
-                //    if (encNode != null)
-                //    {
-                //        string encValue = encNode.GetAttributeValue("value", "");
-                //        //MessageBox.Show("enc: " + encValue);
-                //        //return encValue;
-                //    }
-                //    //return $"Failed to load booking page: {initialResponse.StatusCode}";
-                //}
-
-                while (retryCount < maxRetries)
-                {
-                    try
-                    {
-                        btnSave.Text = $"Saving try {retryCount + 1}";
-                        // --- Step 2: Send form data ---
-                        var content = new FormUrlEncodedContent(formFields);
-                        HttpResponseMessage response = client.PostAsync(txtWebsiteUrl.Text, content).Result;
-
-                        string result = response.Content.ReadAsStringAsync().Result;
-                        if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
-                        {
-                            retryCount++;
-                            //await Task.Delay(1000); // wait before retrying
-                            continue;
-                        }
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            string responseString = response.Content.ReadAsStringAsync().Result;
-                            if (!responseString.ToLower().Contains("error"))
-                            {
-                                var obj = JObject.Parse(responseString);
-                                string sucpageUrl = (string)obj["sucpage"];
-
-                                uri = new Uri(sucpageUrl);
-                                var queryParams = HttpUtility.ParseQueryString(uri.Query);
-                                string rescode = queryParams["rescode"];
-                                return rescode; // You can parse JSON here if needed
-                            }
-                            else
-                            {
-                                return "Error";
-                            }
-                        }
-                        //else
-                        //{
-                        //    string responseString = await response.Content.ReadAsStringAsync();
-                        //    return $"Failed: {response.StatusCode}\n{responseString}";
-                        //}
-                    }
-                    catch (Exception ex)
-                    {
-                        retryCount++;
-                        if (retryCount >= maxRetries)
-                        {
-                            //MessageBox.Show("Failed after "+maxRetries+" attempts. Error: " + ex.Message);
-                            btnSave.Text = "Saved";
-                            return "";
-                        }
-                        Task.Delay(1000).Wait(); // delay before retry
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return $"Error: {ex.Message}";
-            }
-            return null;
-        }
-
-
-        //private async Task<string> CallSaveBookingApiAsync(DataRow row)
-        //{
-        //    try
-        //    {
-        //        string url = row["Url"]?.ToString();
-        //        var parsed = ParseUrlParameters(url);
-
-        //        // Extract time and format to HH:mm
-        //        string rawTime = parsed["time"]; // e.g. 11m00
-        //        string formattedTime = rawTime.Replace("m", ":"); // 11:00
-
-        //        // Construct full date
-        //        string bookDate = $"{parsed["year"]}-{parsed["month"].PadLeft(2, '0')}-{parsed["day"].PadLeft(2, '0')}"; // e.g. 2025-08-21
-
-        //        var payload = new
-        //        {
-        //            bookdate = bookDate,
-        //            booktime = formattedTime,
-        //            adults = int.Parse(parsed["adults"]),
-        //            children = int.Parse(parsed["children"]),
-        //            customers = 1,
-        //            couponcode = "",
-        //            cid = 12,
-        //            bid = int.Parse(parsed["bid"]),
-        //            pid = 0,
-        //            paymod = "",
-        //            ofirstname = row["First-name"]?.ToString(),
-        //            olastname = row["Last-name"]?.ToString(),
-        //            oemail = "test@example.com", // or get from Excel
-        //            ocountry = "PK",
-        //            ocity = row["City"]?.ToString(),
-        //            oaddress = "",
-        //            opostalcode = "",
-        //            ophone = row["Mobile*"]?.ToString(),
-        //            omobile = "",
-        //            ccustom1 = row["Number-of-the-Greek-Decision-(Apofasi)*"]?.ToString(),
-        //            ccustom2 = row["Employer's-Name-in-Greece*"]?.ToString(),
-        //            ccustom3 = row["Father's-name*"]?.ToString(),
-        //            ccustom4 = row["Passport-Number*"]?.ToString(),
-        //            ccustom5 = row["Date-of-Expiry-of-Passport*"]?.ToString(),
-        //            p1firstname = row["First-name"]?.ToString(),
-        //            p1lastname = row["Last-name"]?.ToString(),
-        //            ocomments = "",
-        //            invoice = 0,
-        //            enc = row["Enc"]?.ToString(),
-        //            rnd = new Random().Next(1, 100)
-        //        };
-
-        //        string json = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
-        //        var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-        //        using (var client = new HttpClient())
-        //        {
-        //            HttpResponseMessage response = null;
-        //            int retries = 0;
-
-        //            do
-        //            {
-        //                response = client.PostAsync("https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook", content).Result;
-        //                retries++;
-        //                btnSaveForm.Text = $"Save Booking {retries}";
-        //                //if (!response.IsSuccessStatusCode)
-        //                    //await Task.Delay(3000);
-        //            } while (!response.IsSuccessStatusCode && retries < 5);
-
-        //            if (response.IsSuccessStatusCode)
-        //                return "Success";
-        //            else
-        //                return $"Failed: {response.StatusCode}";
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return $"Error: {ex.Message}";
-        //    }
-        //}
-
+      
         private void btnDownloadExcel_Click(object sender, EventArgs e)
         {
             if (excelData == null || excelData.Rows.Count == 0)
@@ -525,34 +293,6 @@ namespace Appointment
         }
 
 
-        private Dictionary<string, string> ParseUrlParameters(string url)
-        {
-            var uri = new Uri(url);
-            var query = ParseQueryString(url);
-
-            return new Dictionary<string, string>
-            {
-                ["bid"] = query["bid"] ?? "",
-                ["day"] = query["day"] ?? "",
-                ["month"] = query["month"] ?? "",
-                ["year"] = query["year"] ?? "",
-                ["time"] = query["time"] ?? "",
-                ["adults"] = query["adults"] ?? "1",
-                ["children"] = query["children"] ?? "0"
-            };
-        }
-
-        private Dictionary<string, string> ParseQueryString(string url)
-        {
-            var uri = new Uri(url);
-            var query = uri.Query.TrimStart('?').Split('&', (char)StringSplitOptions.RemoveEmptyEntries);
-
-            return query
-                .Select(q => q.Split('='))
-                .Where(q => q.Length == 2)
-                .ToDictionary(q => q[0], q => Uri.UnescapeDataString(q[1]));
-        }
-
         private void btnSaveForm_Click(object sender, EventArgs e)
         {
             if (excelData == null)
@@ -560,43 +300,6 @@ namespace Appointment
                 MessageBox.Show("Please upload an Excel file first.");
                 return;
             }
-            for (int i = 0; i < excelData.Rows.Count; i++)
-            {
-                var url = excelData.Rows[i][13].ToString(); // Column N = index 13
-                var enc = excelData.Rows[i][14].ToString(); // Column O = index 14
-                var saveData = excelData.Rows[i][15].ToString(); // Column O = index 15
-
-                lblCurrentRow.Text = $"Processing Row {i + 1} ..."; // +2 to account for header row
-
-                if (string.IsNullOrWhiteSpace(enc) || !string.IsNullOrWhiteSpace(saveData))
-                    continue;
-
-                var row = excelData.Rows[i];
-                if (!string.IsNullOrWhiteSpace(enc) && !enc.StartsWith("ERROR"))
-                {
-                    string saveResult = CallSaveBookingApiAsync(row).Result;
-                    row["Status"] = "save";
-                    dataGridView1.Refresh();
-                }
-                else
-                {
-                    row["Status"] = "";
-                }
-            }
-
-            //string newColumnName = "Enc Value";
-            //if (excelData.Columns.Contains(newColumnName))
-            //    newColumnName += "_" + Guid.NewGuid().ToString("N").Substring(0, 4);
-
-            //excelData.Columns.Add(newColumnName, typeof(string));
-
-            //foreach (DataRow row in excelData.Rows)
-            //{
-            //    row[newColumnName] = "Default";
-            //}
-
-            //dataGridView1.DataSource = null; // Reset to apply
-            //dataGridView1.DataSource = excelData;
         }
 
         private void btnStop_Click(object sender, EventArgs e)

@@ -208,7 +208,7 @@ namespace Appointment
             this.txtWebsiteUrl.Name = "txtWebsiteUrl";
             this.txtWebsiteUrl.Size = new System.Drawing.Size(394, 20);
             this.txtWebsiteUrl.TabIndex = 10;
-            this.txtWebsiteUrl.Text = "https://appointment.mfa.gr/inner.php/en/reservations/aero/makebook";
+            this.txtWebsiteUrl.Text = "https://www.supersaas.com/schedule/login/Saimways/Work";
             // 
             // Form1
             // 
