@@ -158,11 +158,11 @@ namespace Appointment
                 //driver.FindElement(By.Id("form_4")).SendKeys(passportNumber);
                 //driver.FindElement(By.Id("form_5")).SendKeys(passportExp);
 
-
                 //driver.FindElement(By.Name("form_commit")).Click();
                 await Task.Delay(500, token);
 
                 driver.Navigate().GoToUrl("https://www.supersaas.com/users/logout/Saimways?form=form_2&return=Work");
+                //driver.Navigate().GoToUrl("https://www.supersaas.com/users/logout/grcon-isl-pakistan?return=National_visa_for_WORK");
 
                 return message;
             }
@@ -176,9 +176,7 @@ namespace Appointment
             }
         }
 
-        async Task<string> TryBookAppointmentAsync(IWebDriver driver, WebDriverWait wait, string phone, string mobile,
-string greeceRegion, string apofasiNumber, string employeeName, string passportNumber, string passportExp,
-CancellationToken token)
+        async Task<string> TryBookAppointmentAsync(IWebDriver driver, WebDriverWait wait, string phone, string mobile,string greeceRegion, string apofasiNumber, string employeeName, string passportNumber, string passportExp,CancellationToken token)
         {
 
             var slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
@@ -211,15 +209,16 @@ CancellationToken token)
                     var createAppointBtn = wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Create appointment')]")));
                     ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView(true);", createAppointBtn);
                     createAppointBtn.Click();
+                    await Task.Delay(500, token);
 
 
                     string pageSource = driver.PageSource;
 
                     if (pageSource.Contains("An error prohibited this appointment"))
                     {
-                        Console.WriteLine("Form submission error, closing dialog...");
                         driver.FindElement(By.XPath("//a[@onclick=\"hideDialog('reservation')\"]")).Click();
-                        await Task.Delay(500, token);
+                        slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
+                        await Task.Delay(1000, token);
                         continue; // Break inner loop, re-fetch slotRows
                     }
 
@@ -238,23 +237,22 @@ CancellationToken token)
                     driver.FindElement(By.Id("form_5")).SendKeys(passportExp);
 
                     driver.FindElement(By.Name("form_commit")).Click();
-
+                    await Task.Delay(1000, token);
 
                     pageSource = driver.PageSource;
-                    if (pageSource.Contains("An error prohibited this appointment"))
-                    {
-                        driver.FindElement(By.PartialLinkText("Cancel")).Click();
-                        slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
-                        await Task.Delay(500, token);
-                        continue; // Try next slot (refetch)
-                    }
-
                    
                     if (pageSource.Contains("Appointment successfully created"))
                     {
                         Console.WriteLine("Appointment successfully submitted. Final URL: " + driver.Url);
                         return "Success";
                         break;
+                    }
+                    if (pageSource.Contains("An error prohibited this appointment"))
+                    {
+                        driver.FindElement(By.PartialLinkText("Cancel")).Click();
+                        slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
+                        await Task.Delay(500, token);
+                        continue; // Try next slot (refetch)
                     }
                     if (pageSource.Contains("No available space found") || pageSource.Contains("error"))
                     {

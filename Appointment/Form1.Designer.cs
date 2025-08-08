@@ -206,7 +206,7 @@ namespace Appointment
             // 
             this.txtWebsiteUrl.Location = new System.Drawing.Point(63, 32);
             this.txtWebsiteUrl.Name = "txtWebsiteUrl";
-            this.txtWebsiteUrl.Size = new System.Drawing.Size(394, 20);
+            this.txtWebsiteUrl.Size = new System.Drawing.Size(623, 20);
             this.txtWebsiteUrl.TabIndex = 10;
             this.txtWebsiteUrl.Text = "https://www.supersaas.com/schedule/login/Saimways/Work";
             // 
