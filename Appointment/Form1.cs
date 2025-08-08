@@ -105,7 +105,7 @@ namespace Appointment
                     ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", availableBtn);
                 }
 
-                TryBookAppointmentAsync(driver,wait,phone,mobile,greeceRegion,apofasiNumber,employeeName,passportNumber,passportExp,token).GetAwaiter();
+                var message = await TryBookAppointmentAsync(driver, wait, phone, mobile, greeceRegion, apofasiNumber, employeeName, passportNumber, passportExp, token);
 
                 //var slotRows = wait.Until(d => d.FindElements(By.CssSelector("table.table tbody tr")));
                 //if (slotRows.Count == 0)
@@ -164,7 +164,7 @@ namespace Appointment
 
                 driver.Navigate().GoToUrl("https://www.supersaas.com/users/logout/Saimways?form=form_2&return=Work");
 
-                return "Success";
+                return message;
             }
             catch (OperationCanceledException)
             {
@@ -180,105 +180,105 @@ namespace Appointment
 string greeceRegion, string apofasiNumber, string employeeName, string passportNumber, string passportExp,
 CancellationToken token)
         {
-            bool submitted = false;
 
-            while (!submitted)
+            var slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
+            if (!slotRows.Any())
+                return "No slots available";
+
+            for (int i = 0; i < slotRows.Count; i++)
             {
-                var slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
-                if (!slotRows.Any())
-                    return "No slots available";
+                //btnCheckEnc.Text = "Processing slot " + (i + 1) + " of " + slotRows.Count;
+                var slot = slotRows[i];
+                if (token.IsCancellationRequested)
+                    return "Cancelled";
 
-                foreach (var slot in slotRows)
+                try
                 {
-                    if (token.IsCancellationRequested)
-                        return "Cancelled";
+                    Console.WriteLine("Trying slot, current URL before click: " + driver.Url);
+                    slot.Click();
+                    await Task.Delay(500, token);
 
-                    try
+                    Console.WriteLine("After slot click URL: " + driver.Url);
+
+                    // Fill fields
+                    wait.Until(d => d.FindElement(By.Id("reservation_phone"))).Clear();
+                    wait.Until(d => d.FindElement(By.Id("reservation_phone"))).SendKeys(phone);
+
+                    var mobileEl = wait.Until(d => d.FindElement(By.Id("reservation_mobile")));
+                    mobileEl.Clear();
+                    mobileEl.SendKeys(mobile);
+
+                    var createAppointBtn = wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Create appointment')]")));
+                    ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView(true);", createAppointBtn);
+                    createAppointBtn.Click();
+
+
+                    string pageSource = driver.PageSource;
+
+                    if (pageSource.Contains("An error prohibited this appointment"))
                     {
-                        Console.WriteLine("Trying slot, current URL before click: " + driver.Url);
-                        slot.Click();
-                        Thread.Sleep(500);
-                        
-                        Console.WriteLine("After slot click URL: " + driver.Url);
-
-                        // Fill fields
-                        wait.Until(d => d.FindElement(By.Id("reservation_phone"))).Clear();
-                        wait.Until(d => d.FindElement(By.Id("reservation_phone"))).SendKeys(phone);
-
-                        var mobileEl = wait.Until(d => d.FindElement(By.Id("reservation_mobile")));
-                        mobileEl.Clear();
-                        mobileEl.SendKeys(mobile);
-
-                        var createAppointBtn = wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Create appointment')]")));
-                        ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView(true);", createAppointBtn);
-                        createAppointBtn.Click();
-
-
-                        string pageSource = driver.PageSource;
-
-                        if (pageSource.Contains("An error prohibited this appointment"))
-                        {
-                            Console.WriteLine("Form submission error, closing dialog...");
-                            driver.FindElement(By.XPath("//a[@onclick=\"hideDialog('reservation')\"]")).Click();
-                            await Task.Delay(500, token);
-                            continue; // Break inner loop, re-fetch slotRows
-                        }
-
-                        // Fill next form
-                        var selectElem = wait.Until(d => d.FindElement(By.Id("form_1")));
-                        var select = new SelectElement(selectElem);
-                        select.SelectByText(greeceRegion);
-
-                        driver.FindElement(By.Id("form_2")).Clear();
-                        driver.FindElement(By.Id("form_2")).SendKeys(apofasiNumber);
-                        driver.FindElement(By.Id("form_3")).Clear();
-                        driver.FindElement(By.Id("form_3")).SendKeys(employeeName);
-                        driver.FindElement(By.Id("form_4")).Clear();
-                        driver.FindElement(By.Id("form_4")).SendKeys(passportNumber);
-                        driver.FindElement(By.Id("form_5")).Clear();
-                        driver.FindElement(By.Id("form_5")).SendKeys(passportExp);
-
-                        driver.FindElement(By.Name("form_commit")).Click();
-
-                        
-                        pageSource = driver.PageSource;
-                        if (pageSource.Contains("An error prohibited this appointment"))
-                        {
-                            driver.FindElement(By.PartialLinkText("Cancel")).Click();
-                            slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
-                            continue; // Try next slot (refetch)
-                        }
-
-                        if (pageSource.Contains("No available space found") || pageSource.Contains("error"))
-                        {
-                            Console.WriteLine("Booking failed, trying next.");
-                            continue;
-                        }
-
-                        if (pageSource.Contains("Appointment confirmed"))
-                        {
-                            Console.WriteLine("Appointment successfully submitted. Final URL: " + driver.Url);
-                            submitted = true;
-                            break;
-                        }
+                        Console.WriteLine("Form submission error, closing dialog...");
+                        driver.FindElement(By.XPath("//a[@onclick=\"hideDialog('reservation')\"]")).Click();
+                        await Task.Delay(500, token);
+                        continue; // Break inner loop, re-fetch slotRows
                     }
-                    catch (StaleElementReferenceException)
+
+                    // Fill next form
+                    var selectElem = wait.Until(d => d.FindElement(By.Id("form_1")));
+                    var select = new SelectElement(selectElem);
+                    select.SelectByText(greeceRegion);
+
+                    driver.FindElement(By.Id("form_2")).Clear();
+                    driver.FindElement(By.Id("form_2")).SendKeys(apofasiNumber);
+                    driver.FindElement(By.Id("form_3")).Clear();
+                    driver.FindElement(By.Id("form_3")).SendKeys(employeeName);
+                    driver.FindElement(By.Id("form_4")).Clear();
+                    driver.FindElement(By.Id("form_4")).SendKeys(passportNumber);
+                    driver.FindElement(By.Id("form_5")).Clear();
+                    driver.FindElement(By.Id("form_5")).SendKeys(passportExp);
+
+                    driver.FindElement(By.Name("form_commit")).Click();
+
+
+                    pageSource = driver.PageSource;
+                    if (pageSource.Contains("An error prohibited this appointment"))
                     {
-                        Console.WriteLine("DOM updated. Will retry.");
+                        driver.FindElement(By.PartialLinkText("Cancel")).Click();
+                        slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
+                        await Task.Delay(500, token);
+                        continue; // Try next slot (refetch)
+                    }
+
+                   
+                    if (pageSource.Contains("Appointment successfully created"))
+                    {
+                        Console.WriteLine("Appointment successfully submitted. Final URL: " + driver.Url);
+                        return "Success";
                         break;
                     }
-                    catch (Exception ex)
+                    if (pageSource.Contains("No available space found") || pageSource.Contains("error"))
                     {
-                        Console.WriteLine($"Unexpected error on slot: {ex.Message}");
+                        Console.WriteLine("Booking failed, trying next.");
                         continue;
                     }
                 }
-
-                // Optional wait between full slot refresh cycles
-                await Task.Delay(1000, token);
+                catch (StaleElementReferenceException)
+                {
+                    Console.WriteLine("DOM updated. Will retry.");
+                    slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
+                    await Task.Delay(500, token);
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unexpected error on slot: {ex.Message}");
+                    continue;
+                }
             }
 
-            return submitted ? "Submitted" : "No slot succeeded";
+
+
+            return "No slot succeeded";
         }
 
 
@@ -336,7 +336,7 @@ CancellationToken token)
                     if (cancellationTokenSource.Token.IsCancellationRequested)
                         break;
 
-                    var status = await ChromeJobAsync(i, cancellationTokenSource.Token);
+                    var status = await Task.Run(() => ChromeJobAsync(i, cancellationTokenSource.Token));
                     excelData.Rows[i]["Status"] = status;
                     dataGridView1.Refresh();
                     if (status == "Cancelled")

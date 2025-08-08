@@ -106,7 +106,7 @@ namespace Appointment
             // 
             this.btnCheckEnc.Location = new System.Drawing.Point(99, 3);
             this.btnCheckEnc.Name = "btnCheckEnc";
-            this.btnCheckEnc.Size = new System.Drawing.Size(109, 23);
+            this.btnCheckEnc.Size = new System.Drawing.Size(175, 23);
             this.btnCheckEnc.TabIndex = 1;
             this.btnCheckEnc.Text = "Start Booking";
             this.btnCheckEnc.UseVisualStyleBackColor = true;
@@ -114,7 +114,7 @@ namespace Appointment
             // 
             // btnStop
             // 
-            this.btnStop.Location = new System.Drawing.Point(214, 3);
+            this.btnStop.Location = new System.Drawing.Point(280, 3);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(75, 23);
             this.btnStop.TabIndex = 9;
@@ -124,7 +124,7 @@ namespace Appointment
             // 
             // btnDownloadExcel
             // 
-            this.btnDownloadExcel.Location = new System.Drawing.Point(295, 3);
+            this.btnDownloadExcel.Location = new System.Drawing.Point(361, 3);
             this.btnDownloadExcel.Name = "btnDownloadExcel";
             this.btnDownloadExcel.Size = new System.Drawing.Size(102, 23);
             this.btnDownloadExcel.TabIndex = 2;
@@ -138,7 +138,7 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(403, 0);
+            this.label1.Location = new System.Drawing.Point(469, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(44, 29);
             this.label1.TabIndex = 5;
@@ -147,7 +147,7 @@ namespace Appointment
             // 
             // txtRateLimit
             // 
-            this.txtRateLimit.Location = new System.Drawing.Point(453, 3);
+            this.txtRateLimit.Location = new System.Drawing.Point(519, 3);
             this.txtRateLimit.Name = "txtRateLimit";
             this.txtRateLimit.Size = new System.Drawing.Size(57, 20);
             this.txtRateLimit.TabIndex = 3;
@@ -160,7 +160,7 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(516, 0);
+            this.label2.Location = new System.Drawing.Point(582, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(42, 29);
             this.label2.TabIndex = 6;
@@ -169,7 +169,7 @@ namespace Appointment
             // 
             // txtInterval
             // 
-            this.txtInterval.Location = new System.Drawing.Point(564, 3);
+            this.txtInterval.Location = new System.Drawing.Point(630, 3);
             this.txtInterval.Name = "txtInterval";
             this.txtInterval.Size = new System.Drawing.Size(56, 20);
             this.txtInterval.TabIndex = 4;
@@ -182,7 +182,7 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lblCurrentRow.AutoSize = true;
-            this.lblCurrentRow.Location = new System.Drawing.Point(626, 0);
+            this.lblCurrentRow.Location = new System.Drawing.Point(692, 0);
             this.lblCurrentRow.Name = "lblCurrentRow";
             this.lblCurrentRow.Size = new System.Drawing.Size(79, 29);
             this.lblCurrentRow.TabIndex = 7;
@@ -195,16 +195,16 @@ namespace Appointment
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.btnSave.AutoSize = true;
-            this.btnSave.Location = new System.Drawing.Point(711, 0);
+            this.btnSave.Location = new System.Drawing.Point(3, 29);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(54, 29);
+            this.btnSave.Size = new System.Drawing.Size(54, 26);
             this.btnSave.TabIndex = 8;
             this.btnSave.Text = "Saving try";
             this.btnSave.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // txtWebsiteUrl
             // 
-            this.txtWebsiteUrl.Location = new System.Drawing.Point(3, 32);
+            this.txtWebsiteUrl.Location = new System.Drawing.Point(63, 32);
             this.txtWebsiteUrl.Name = "txtWebsiteUrl";
             this.txtWebsiteUrl.Size = new System.Drawing.Size(394, 20);
             this.txtWebsiteUrl.TabIndex = 10;
