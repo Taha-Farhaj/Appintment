@@ -161,7 +161,11 @@ namespace Appointment
                 //driver.FindElement(By.Name("form_commit")).Click();
                 await Task.Delay(500, token);
 
-                driver.Navigate().GoToUrl("https://www.supersaas.com/users/logout/Saimways?form=form_2&return=Work");
+                IWebElement logoutLink = wait.Until(
+    SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(By.LinkText("Sign out"))
+);
+                logoutLink.Click();
+                //.Navigate().GoToUrl("https://www.supersaas.com/users/logout/Saimways?form=form_2&return=Work");
                 //driver.Navigate().GoToUrl("https://www.supersaas.com/users/logout/grcon-isl-pakistan?return=National_visa_for_WORK");
 
                 return message;
@@ -176,7 +180,7 @@ namespace Appointment
             }
         }
 
-        async Task<string> TryBookAppointmentAsync(IWebDriver driver, WebDriverWait wait, string phone, string mobile,string greeceRegion, string apofasiNumber, string employeeName, string passportNumber, string passportExp,CancellationToken token)
+        async Task<string> TryBookAppointmentAsync(IWebDriver driver, WebDriverWait wait, string phone, string mobile, string greeceRegion, string apofasiNumber, string employeeName, string passportNumber, string passportExp, CancellationToken token)
         {
 
             var slotRows = driver.FindElements(By.CssSelector("table.table tbody tr"));
@@ -240,7 +244,7 @@ namespace Appointment
                     await Task.Delay(1000, token);
 
                     pageSource = driver.PageSource;
-                   
+
                     if (pageSource.Contains("Appointment successfully created"))
                     {
                         Console.WriteLine("Appointment successfully submitted. Final URL: " + driver.Url);
