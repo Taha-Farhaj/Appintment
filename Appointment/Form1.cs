@@ -72,10 +72,20 @@ namespace Appointment
                 string passportNumber = excelData.Rows[row][7].ToString();
                 string passportExp = excelData.Rows[row][8].ToString();
 
+                var options = new ChromeOptions();
+                options.AddArgument("--disable-blink-features=AutomationControlled");
+                options.AddExcludedArgument("enable-automation");
+                options.AddAdditionalOption("useAutomationExtension", false);
+
+                var driver = new ChromeDriver(options);
+
                 driver.Navigate().GoToUrl(txtWebsiteUrl.Text);
 
-                var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+                var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(90));
+                wait.Until(d => d.Url.Contains("dashboard") || d.FindElements(By.CssSelector("input,button,a")).Count > 0);
 
+
+                await Task.Delay(15000, token);
                 // Login
                 wait.Until(d => d.FindElement(By.Id("name"))).Clear();
                 driver.FindElement(By.Id("name")).SendKeys(username);
@@ -205,10 +215,18 @@ namespace Appointment
                     // Fill fields
                     wait.Until(d => d.FindElement(By.Id("reservation_phone"))).Clear();
                     wait.Until(d => d.FindElement(By.Id("reservation_phone"))).SendKeys(phone);
-
                     var mobileEl = wait.Until(d => d.FindElement(By.Id("reservation_mobile")));
                     mobileEl.Clear();
                     mobileEl.SendKeys(mobile);
+
+                    wait.Until(d => d.FindElement(By.Id("reservation_field_1_r"))).Clear();
+                    wait.Until(d => d.FindElement(By.Id("reservation_field_1_r"))).SendKeys(apofasiNumber);
+
+                    wait.Until(d => d.FindElement(By.Id("reservation_field_2_r"))).Clear();
+                    wait.Until(d => d.FindElement(By.Id("reservation_field_2_r"))).SendKeys(employeeName);
+
+                    wait.Until(d => d.FindElement(By.Id("from"))).SendKeys(employeeName);
+
 
                     var createAppointBtn = wait.Until(d => d.FindElement(By.XPath("//button[contains(text(), 'Create appointment')]")));
                     ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView(true);", createAppointBtn);
@@ -227,18 +245,15 @@ namespace Appointment
                     }
 
                     // Fill next form
-                    var selectElem = wait.Until(d => d.FindElement(By.Id("form_1")));
+                    var selectElem = wait.Until(d => d.FindElement(By.Id("form_4")));
                     var select = new SelectElement(selectElem);
                     select.SelectByText(greeceRegion);
 
+                   
                     driver.FindElement(By.Id("form_2")).Clear();
-                    driver.FindElement(By.Id("form_2")).SendKeys(apofasiNumber);
+                    driver.FindElement(By.Id("form_2")).SendKeys(passportNumber);
                     driver.FindElement(By.Id("form_3")).Clear();
-                    driver.FindElement(By.Id("form_3")).SendKeys(employeeName);
-                    driver.FindElement(By.Id("form_4")).Clear();
-                    driver.FindElement(By.Id("form_4")).SendKeys(passportNumber);
-                    driver.FindElement(By.Id("form_5")).Clear();
-                    driver.FindElement(By.Id("form_5")).SendKeys(passportExp);
+                    driver.FindElement(By.Id("form_3")).SendKeys(passportExp);
 
                     driver.FindElement(By.Name("form_commit")).Click();
                     await Task.Delay(1000, token);
